@@ -1,8 +1,8 @@
-name: "Unit Tests"
+name: Unit Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   test:
@@ -17,19 +17,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies (optional)
+      - name: Install dependencies
         run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
+          python -m pip install --upgrade pip
+          pip install pytest
+          [ -f requirements.txt ] && pip install -r requirements.txt
 
-      - name: Run dummy test
-        run: |
-          echo "Running dummy test..."
-          python - <<EOF
-def test_dummy():
-    assert 1 + 1 == 2
-
-test_dummy()
-print("Dummy test passed")
-EOF
+      - name: Run tests
+        run: - name: Run tests
+  run: pytest "unit tests/"
