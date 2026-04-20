@@ -25,4 +25,4 @@ jobs:
 
       - name: Run tests
         run: - name: Run tests
-  run: pytest "unit tests/"
+  run: pytest
