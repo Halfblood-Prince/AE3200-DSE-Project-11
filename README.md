@@ -23,7 +23,7 @@ sudo apt update && sudo apt upgrade
 sudo apt install ros-kilted-desktop
 ```
 
-# Execution
+### Execution
 Always run the following command to activate ROS2 (do it everytime):
 ```bash
 source /opt/ros/kilted/setup.bash
