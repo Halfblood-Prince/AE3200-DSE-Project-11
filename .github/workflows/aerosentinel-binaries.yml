@@ -60,7 +60,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libdrogon-dev \
-            default-libmysqlclient-dev \
+            libmariadb-dev \
+            libmariadb-dev-compat \
             libopencv-dev \
             python3-colcon-common-extensions \
             ros-${ROS_DISTRO}-ament-cmake \
@@ -77,6 +78,19 @@ jobs:
         shell: bash
         run: |
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
+          multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
+          mysql_include_dir="$(mysql_config --variable=pkgincludedir 2>/dev/null || true)"
+          if [ -z "${mysql_include_dir}" ]; then
+            mysql_include_dir="$(mysql_config --include | tr ' ' '\n' | sed -n 's/^-I//p' | head -n1)"
+          fi
+          mysql_lib_dir="$(mysql_config --variable=pkglibdir 2>/dev/null || true)"
+          if [ -z "${mysql_lib_dir}" ]; then
+            mysql_lib_dir="$(mysql_config --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -n1)"
+          fi
+          mysql_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 \( -name 'libmysqlclient.so' -o -name 'libmariadb.so' \) -print -quit)"
+          echo "mysql_include_dir=${mysql_include_dir}"
+          echo "mysql_lib_dir=${mysql_lib_dir}"
+          echo "mysql_library=${mysql_library}"
           mkdir -p "${RUNNER_TEMP}/ros_ws/src"
           ln -s "${GITHUB_WORKSPACE}" "${RUNNER_TEMP}/ros_ws/src/ros_test"
           cd "${RUNNER_TEMP}/ros_ws"
@@ -85,6 +99,10 @@ jobs:
             --event-handlers console_direct+ \
             --cmake-args \
               -DROS_TEST_USE_PREBUILT_BINARIES=OFF \
+              -DMYSQL_INCLUDE_DIR="${mysql_include_dir}" \
+              -DMYSQL_LIB_DIR="${mysql_lib_dir}" \
+              -DMYSQL_LIBRARY_DIR="${mysql_lib_dir}" \
+              -DMYSQL_LIBRARY="${mysql_library}" \
               -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
 
       - name: Show colcon logs on failure
