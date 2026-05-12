@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import http.cookiejar
+import json
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -12,12 +13,22 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def request(opener, url, data=None, follow_redirects=True):
+def request(opener, url, data=None, headers=None):
+    encoded_data = None
+    request_headers = dict(headers or {})
     if data is not None:
-        data = urllib.parse.urlencode(data).encode()
+        if isinstance(data, (bytes, bytearray)):
+            encoded_data = data
+        elif request_headers.get("Content-Type") == "application/json":
+            encoded_data = json.dumps(data).encode()
+        else:
+            encoded_data = urllib.parse.urlencode(data).encode()
 
     try:
-        response = opener.open(url, data=data, timeout=10)
+        response = opener.open(
+            urllib.request.Request(url, data=encoded_data, headers=request_headers),
+            timeout=10,
+        )
         body = response.read().decode("utf-8", errors="replace")
         return response.status, response.headers, body
     except urllib.error.HTTPError as error:
@@ -76,7 +87,18 @@ def main():
     assert_status(status, 200, "authenticated API")
     assert_contains(body, "Sentinel-7B", "authenticated API")
 
-    print("Flask AeroSentinel smoke tests passed.")
+    status, _, body = request(
+        opener,
+        f"{args.base_url}/api/control/cmd_vel",
+        {"linear_x": 0.0, "angular_z": 0.0},
+        {"Content-Type": "application/json"},
+    )
+    if status not in {200, 503}:
+        raise AssertionError(f"cmd_vel API: expected HTTP 200 or 503, got {status}")
+    if status == 503:
+        assert_contains(body, "ros_control_unavailable", "cmd_vel unavailable response")
+
+    print("AeroSentinel C++ smoke tests passed.")
 
 
 if __name__ == "__main__":

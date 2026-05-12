@@ -268,6 +268,7 @@ def generate_launch_description():
         additional_env={
             "PORT": web_port,
             "AEROSENTINEL_BIND_ADDRESS": web_bind_address,
+            "AEROSENTINEL_PUBLIC_DIR": PathJoinSubstitution([pkg_share, "website", "public"]),
         },
         condition=IfCondition(web_enabled),
     )
@@ -312,17 +313,17 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "web",
                 default_value="true",
-                description="Set false to disable the AeroSentinel Flask web dashboard.",
+                description="Set false to disable the AeroSentinel C++ web dashboard.",
             ),
             DeclareLaunchArgument(
                 "web_port",
                 default_value="8080",
-                description="Port for the AeroSentinel Flask web dashboard.",
+                description="Port for the AeroSentinel C++ web dashboard.",
             ),
             DeclareLaunchArgument(
                 "web_bind_address",
                 default_value="0.0.0.0",
-                description="Bind address for the AeroSentinel Flask web dashboard.",
+                description="Bind address for the AeroSentinel C++ web dashboard.",
             ),
             web_server,
             gazebo,
