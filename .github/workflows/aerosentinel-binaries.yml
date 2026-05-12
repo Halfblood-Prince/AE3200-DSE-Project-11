@@ -61,6 +61,7 @@ jobs:
           sudo apt-get install -y \
             libdrogon-dev \
             libopencv-dev \
+            python3-colcon-common-extensions \
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
             ros-${ROS_DISTRO}-nav-msgs \
@@ -80,9 +81,21 @@ jobs:
           cd "${RUNNER_TEMP}/ros_ws"
           colcon build \
             --packages-select ros_test \
+            --event-handlers console_direct+ \
             --cmake-args \
               -DROS_TEST_USE_PREBUILT_BINARIES=OFF \
               -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
+
+      - name: Show colcon logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          log_dir="${RUNNER_TEMP}/ros_ws/log/latest_build/ros_test"
+          if [ -d "${log_dir}" ]; then
+            find "${log_dir}" -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+          else
+            echo "No ros_test colcon log directory found at ${log_dir}"
+          fi
 
       - name: Stage binary folder
         shell: bash

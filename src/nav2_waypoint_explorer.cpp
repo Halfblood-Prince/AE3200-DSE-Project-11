@@ -465,6 +465,12 @@ class Nav2WaypointExplorer : public rclcpp::Node
 
     bool is_safe_free_cell(int mx, int my)
     {
+        if (mx < 0 || my < 0 || mx >= static_cast<int>(map_->info.width) ||
+            my >= static_cast<int>(map_->info.height))
+        {
+            return false;
+        }
+
         const auto key = cell_key(mx, my);
         if (safe_cell_cache_enabled_)
         {
@@ -714,7 +720,7 @@ class Nav2WaypointExplorer : public rclcpp::Node
     {
         geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = "map";
-        pose.header.stamp = get_clock()->now();
+        pose.header.stamp = get_clock()->now().to_msg();
         pose.pose.position.x = x;
         pose.pose.position.y = y;
         pose.pose.orientation.z = std::sin(yaw / 2.0);
