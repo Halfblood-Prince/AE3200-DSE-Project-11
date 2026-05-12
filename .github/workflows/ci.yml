@@ -3,9 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - main
-      - master
+      - ak/ros2
   pull_request:
+    branches:
+      - ak/ros2
   workflow_dispatch:
 
 permissions:

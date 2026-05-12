@@ -3,8 +3,7 @@ name: AeroSentinel Linux Binaries
 on:
   push:
     branches:
-      - main
-      - master
+      - ak/ros2
     paths:
       - ".github/workflows/aerosentinel-binaries.yml"
       - "CMakeLists.txt"
@@ -12,6 +11,8 @@ on:
       - "src/**"
       - "website/**"
   pull_request:
+    branches:
+      - ak/ros2
     paths:
       - ".github/workflows/aerosentinel-binaries.yml"
       - "CMakeLists.txt"
