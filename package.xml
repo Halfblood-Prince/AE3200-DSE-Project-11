@@ -18,6 +18,7 @@
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>libdrogon-dev</depend>
+  <depend>default-libmysqlclient-dev</depend>
   <depend>libopencv-dev</depend>
 
   <exec_depend>launch</exec_depend>

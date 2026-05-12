@@ -6,7 +6,7 @@ This package launches a Gazebo Harmonic simulation of a differential-drive lidar
 
 ```bash
 sudo apt update
-sudo apt install python3-colcon-common-extensions cmake g++ libdrogon-dev libopencv-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-rclcpp-action ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs ros-jazzy-nav2-bringup ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-ros-gz-sim ros-jazzy-rviz2 ros-jazzy-slam-toolbox ros-jazzy-tf2 ros-jazzy-tf2-ros
+sudo apt install python3-colcon-common-extensions cmake g++ libdrogon-dev default-libmysqlclient-dev libopencv-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-rclcpp-action ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs ros-jazzy-nav2-bringup ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-ros-gz-sim ros-jazzy-rviz2 ros-jazzy-slam-toolbox ros-jazzy-tf2 ros-jazzy-tf2-ros
 ```
 
 ## Build

@@ -60,6 +60,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libdrogon-dev \
+            default-libmysqlclient-dev \
             libopencv-dev \
             python3-colcon-common-extensions \
             ros-${ROS_DISTRO}-ament-cmake \
