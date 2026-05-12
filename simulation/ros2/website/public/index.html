@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AeroSentinel Control Center</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+          </div>
+          <div>
+            <strong>AeroSentinel</strong>
+            <small>CONTROL CENTER</small>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="#"><span class="nav-icon">&#8962;</span>Dashboard</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#9671;</span>Map</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#8961;</span>Mission Planner</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#9636;</span>Flight Logs</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#9635;</span>Assets</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#8981;</span>Maintenance</a>
+          <a class="nav-item" href="#"><span class="nav-icon">&#9881;</span>Settings</a>
+        </nav>
+
+        <section class="drone-card">
+          <div class="section-label">Drone</div>
+          <div class="drone-head">
+            <strong>Sentinel-7B</strong>
+            <span class="pill online">Online</span>
+          </div>
+          <div class="drone-preview" role="img" aria-label="Sentinel drone"></div>
+          <dl class="drone-meta">
+            <div><dt>SN:</dt><dd>AS-7B-29491</dd></div>
+            <div><dt>FW:</dt><dd>3.2.14</dd></div>
+          </dl>
+        </section>
+
+        <section class="signal-card">
+          <div class="signal-heading">
+            <span>Signal Strength</span>
+            <strong>94%</strong>
+          </div>
+          <div class="strength"><span style="width: 84%"></span></div>
+          <div class="link-row"><span>RC Link</span><strong>Strong</strong></div>
+          <div class="link-row"><span>Video Link</span><strong>Strong</strong></div>
+        </section>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="mission-badge">
+            <div class="shield" aria-hidden="true">&#9022;</div>
+            <div>
+              <div class="mission-title">Mission: ALPHA-0426 <span class="status-dot"></span><span class="status-text">Active</span></div>
+              <div class="mission-subtitle">Search &amp; Inspect <span>&bull;</span> Ridge Line Survey</div>
+            </div>
+          </div>
+
+          <div class="system-strip">
+            <div class="system-item">
+              <span>UTC</span>
+              <strong id="utc-time">18:42:17</strong>
+              <small>May 29, 2025</small>
+            </div>
+            <div class="system-item weather">
+              <span class="weather-icon">&#9729;</span>
+              <strong>18&deg;C</strong>
+              <small>Cloudy</small>
+            </div>
+            <div class="system-item wind">
+              <span class="wind-icon">&#8961;</span>
+              <strong>12 km/h</strong>
+              <small>W NW</small>
+            </div>
+            <button class="icon-button" aria-label="Messages">&#9649;</button>
+            <button class="icon-button" aria-label="Notifications">&#9826;</button>
+            <button class="icon-button" aria-label="Settings">&#9881;</button>
+            <a class="avatar" href="/logout" aria-label="Sign out">AD</a>
+          </div>
+        </header>
+
+        <section class="dashboard-grid" aria-label="AeroSentinel dashboard">
+          <article class="panel live-panel">
+            <div class="panel-title">
+              <span><i class="dot green"></i>Live Feed</span>
+              <button class="ghost-button" aria-label="Live feed options">&#8942;</button>
+            </div>
+            <div class="camera-frame">
+              <img id="camera-feed" class="camera-image" alt="">
+              <div class="feed-chip auto">&#9634; Auto</div>
+              <div class="feed-chip format" id="camera-status">1080p&nbsp;&nbsp; Live</div>
+              <div class="feed-chip rec"><i></i> Rec&nbsp; 07:14</div>
+              <div class="pitch-scale" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="temp-chip">-8&deg;</div>
+              <div class="camera-readout left">
+                <span>D&nbsp; 1.2 km</span><span>H&nbsp; 512 m</span>
+                <span>HS&nbsp; 15.2 m/s</span><span>VS&nbsp; 0.1 m/s</span>
+              </div>
+              <div class="camera-readout right">
+                <span>ISO&nbsp; 100</span><span>1/800</span><span>f/2.8</span><span>5600K</span>
+              </div>
+              <button class="expand" aria-label="Fullscreen">&#9974;</button>
+            </div>
+          </article>
+
+          <article class="panel map-panel">
+            <div class="panel-title">
+              <span>Flight Map</span>
+              <button class="ghost-button" aria-label="Map options">&#8942;</button>
+            </div>
+            <div class="map-frame">
+              <div class="map-image"></div>
+              <svg class="route-overlay" viewBox="0 0 440 320" role="img" aria-label="Flight route">
+                <path class="route route-complete" d="M117 187 L117 224 L188 224 L241 161" />
+                <path class="route route-plan" d="M117 187 L162 93 L262 47 L323 86" />
+                <path class="route route-current" d="M241 161 L305 158 L323 86" />
+                <circle class="waypoint" cx="117" cy="187" r="5"></circle>
+                <circle class="waypoint" cx="162" cy="93" r="5"></circle>
+                <circle class="waypoint" cx="262" cy="47" r="5"></circle>
+                <circle class="waypoint" cx="323" cy="86" r="5"></circle>
+                <circle class="aircraft-pulse" cx="241" cy="161" r="12"></circle>
+                <circle class="aircraft" cx="241" cy="161" r="9"></circle>
+                <text x="127" y="189">WP 3</text>
+                <text x="174" y="102">WP 2</text>
+                <text x="274" y="50">WP 3</text>
+                <text x="335" y="88">WP 5</text>
+              </svg>
+              <div class="compass"><span>N</span></div>
+              <div class="map-tools">
+                <button aria-label="Center map">&#9022;</button>
+                <button aria-label="Zoom in">+</button>
+                <button aria-label="Zoom out">&minus;</button>
+                <button aria-label="Layers">&#9649;</button>
+              </div>
+              <div class="map-legend">
+                <span><i class="plan"></i>Planned Path</span>
+                <span><i class="complete"></i>Completed</span>
+                <span><i class="current"></i>Current</span>
+              </div>
+              <div class="scale-bar"><span></span>500 m</div>
+            </div>
+          </article>
+
+          <article class="panel manual-panel">
+            <div class="panel-title">
+              <span>Manual Drive</span>
+              <span class="pill rc" id="control-status">Ready</span>
+            </div>
+            <div class="field-label">Flight Mode</div>
+            <div class="segmented">
+              <button class="active">Manual</button>
+              <button>Hold</button>
+              <button>Slow</button>
+              <button>Stop</button>
+            </div>
+            <div class="control-grid">
+              <section>
+                <div class="field-label">Direction / Yaw</div>
+                <div class="dpad" aria-label="Direction controls">
+                  <button class="up" data-drive="forward" aria-label="Forward">&#8963;</button>
+                  <button class="left" data-drive="left" aria-label="Left">&lsaquo;</button>
+                  <button class="center" data-drive="stop" aria-label="Hold">&#9022;</button>
+                  <button class="right" data-drive="right" aria-label="Right">&rsaquo;</button>
+                  <button class="down" data-drive="back" aria-label="Back">&#8964;</button>
+                </div>
+              </section>
+              <section class="altitude-control">
+                <div class="field-label">Speed</div>
+                <button id="drive-speed-up" aria-label="Increase speed">&uarr;</button>
+                <div class="altitude-value"><strong id="drive-speed">1.25</strong><span>m/s</span></div>
+                <button id="drive-speed-down" aria-label="Decrease speed">&darr;</button>
+              </section>
+            </div>
+            <div class="action-row">
+              <button class="takeoff" id="drive-slow">&#8615; Slow</button>
+              <button class="land" id="drive-fast">&#8613; Fast</button>
+            </div>
+            <button class="emergency" id="drive-stop">&#9678; Emergency Stop</button>
+          </article>
+
+          <article class="panel telemetry-panel">
+            <div class="panel-title">
+              <span>Telemetry</span>
+              <button class="ghost-button" aria-label="Telemetry options">&#8983;</button>
+            </div>
+            <div class="telemetry-grid">
+              <div class="metric battery"><span class="metric-icon">&#9637;</span><small>Battery</small><strong>78%</strong><em>22.4 V&nbsp;&nbsp; 16.2 Ah</em></div>
+              <div class="metric"><span class="metric-icon">&#10070;</span><small>GPS</small><strong>18</strong><em>SATs</em></div>
+              <div class="metric"><span class="metric-icon">&#9651;</span><small>Altitude</small><strong>512 <b>m</b></strong><em>AMSL</em></div>
+              <div class="metric"><span class="metric-icon">&#9692;</span><small>Speed</small><strong>15.2 <b>m/s</b></strong><em>54.7 km/h</em></div>
+              <div class="metric"><span class="metric-icon orange">&nearr;</span><small>Distance</small><strong>1.2 <b>km</b></strong><em>From Home</em></div>
+              <div class="metric"><span class="metric-icon">&#8779;</span><small>Wind</small><strong>12 <b>km/h</b></strong><em>WNW</em></div>
+              <div class="metric"><span class="metric-icon">&#9832;</span><small>Temperature</small><strong>18&deg;C</strong><em>Aircraft</em></div>
+              <div class="metric signal"><span class="bars"><i></i><i></i><i></i><i></i></span><small>Signal</small><strong>94%</strong><em>RC / Video</em></div>
+            </div>
+          </article>
+
+          <div class="bottom-grid">
+            <article class="panel mission-panel">
+              <div class="panel-title"><span>Mission Status</span></div>
+              <div class="mission-body">
+                <div class="progress-ring" style="--progress: 56">
+                  <span>56%</span>
+                  <small>Complete</small>
+                </div>
+                <dl class="status-list">
+                  <div><dt>Current Waypoint</dt><dd>3 / 5</dd></div>
+                  <div><dt>Mission Time</dt><dd>00:14:32</dd></div>
+                  <div><dt>Est. Time Remaining</dt><dd>00:11:18</dd></div>
+                  <div><dt>Est. Total Time</dt><dd>00:25:50</dd></div>
+                </dl>
+              </div>
+            </article>
+
+            <article class="panel settings-panel">
+              <div class="panel-title">
+                <span>Autonomy</span>
+                <button class="ghost-button" aria-label="Edit settings">&#9998;</button>
+              </div>
+              <dl class="table-list">
+                <div><dt>Mode</dt><dd>Detached</dd></div>
+                <div><dt>Planner</dt><dd>Standby</dd></div>
+                <div><dt>Explorer</dt><dd>Off</dd></div>
+                <div><dt>Velocity Source</dt><dd>Web Manual</dd></div>
+                <div><dt>Nav2</dt><dd>Disabled</dd></div>
+              </dl>
+            </article>
+
+            <article class="panel health-panel">
+              <div class="panel-title">
+                <span>System Health</span>
+                <button class="ghost-button" aria-label="Health options">&#8942;</button>
+              </div>
+              <dl class="table-list health-list">
+                <div><dt>Overall Status</dt><dd>&#10003; Good</dd></div>
+                <div><dt>Motors</dt><dd>&#10003; Good</dd></div>
+                <div><dt>Sensors</dt><dd>&#10003; Good</dd></div>
+                <div><dt>IMU</dt><dd>&#10003; Good</dd></div>
+                <div><dt>Battery Health</dt><dd>&#10003; Good</dd></div>
+                <div><dt>Storage</dt><dd>&#10003; Good</dd></div>
+              </dl>
+            </article>
+          </div>
+
+          <aside class="right-stack">
+            <article class="panel obstacle-panel">
+              <div class="panel-title">
+                <span>Obstacle Detection</span>
+                <span class="pill online">On</span>
+              </div>
+              <div class="obstacle-frame">
+                <div class="obstacle-image"></div>
+                <div class="radar-lines" aria-hidden="true"></div>
+                <ul class="obstacle-legend">
+                  <li><i class="far"></i>&gt; 25m</li>
+                  <li><i class="mid"></i>10 - 25m</li>
+                  <li><i class="near"></i>&lt; 10m</li>
+                </ul>
+                <button>View 3D</button>
+              </div>
+            </article>
+
+            <article class="panel event-panel">
+              <div class="panel-title">
+                <span>Event Log</span>
+                <a href="#">View All</a>
+              </div>
+              <ol class="event-list">
+                <li><span class="info">i</span><time>18:42:12</time><strong>Waypoint 3 reached</strong></li>
+                <li><span class="warn">!</span><time>18:41:58</time><strong>Obstacle detected 85m ahead</strong></li>
+                <li><span class="info">i</span><time>18:41:32</time><strong>Altitude set to 512m</strong></li>
+                <li><span class="info">i</span><time>18:41:10</time><strong>Waypoint 2 reached</strong></li>
+                <li><span class="ok">+</span><time>18:40:55</time><strong>Mission started</strong></li>
+              </ol>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>
