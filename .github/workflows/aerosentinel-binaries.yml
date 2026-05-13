@@ -5,7 +5,7 @@ on:
     branches:
       - ak/ros2
     paths:
-      - ".github/workflows/aerosentinel-binaries.yml"
+      - ".github/workflows/**"
       - "CMakeLists.txt"
       - "package.xml"
       - "src/**"
@@ -14,7 +14,7 @@ on:
     branches:
       - ak/ros2
     paths:
-      - ".github/workflows/aerosentinel-binaries.yml"
+      - ".github/workflows/**"
       - "CMakeLists.txt"
       - "package.xml"
       - "src/**"
