@@ -720,7 +720,7 @@ class Nav2WaypointExplorer : public rclcpp::Node
     {
         geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = "map";
-        pose.header.stamp = get_clock()->now().to_msg();
+        pose.header.stamp = get_clock()->now();
         pose.pose.position.x = x;
         pose.pose.position.y = y;
         pose.pose.orientation.z = std::sin(yaw / 2.0);

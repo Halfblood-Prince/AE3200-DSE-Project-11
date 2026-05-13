@@ -108,7 +108,7 @@ class SimpleMapper : public rclcpp::Node
     void publish_map()
     {
         nav_msgs::msg::OccupancyGrid msg;
-        msg.header.stamp = get_clock()->now().to_msg();
+        msg.header.stamp = get_clock()->now();
         msg.header.frame_id = "odom";
         msg.info.resolution = resolution_;
         msg.info.width = width_;
