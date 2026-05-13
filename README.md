@@ -11,13 +11,22 @@ sudo apt install python3-colcon-common-extensions cmake dpkg-dev g++ libc-ares-d
 
 ## Build
 
-Build from the root of your ROS 2 workspace:
+Clone into a ROS 2 workspace, source Jazzy, then build from the workspace root:
 
 ```bash
-cd <ros-workspace>
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+git clone --branch ak/ros2 https://github.com/halfblood-prince/ae3200-dse-project-11.git
+cd ~/ros2_ws
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+If `source /opt/ros/jazzy/setup.bash` fails, install ROS 2 Jazzy and the
+dependencies listed above first. The prebuilt binaries in `bin/` avoid compiling
+the C++ executables, but `colcon build` still needs the ROS 2 `ament_cmake`
+environment to install the package.
 
 The ROS nodes and the AeroSentinel web server are C++ executables. If a complete
 prebuilt binary set exists for the current CPU in `bin/amd_x64` or `bin/arm_x64`,
@@ -112,6 +121,13 @@ ros2 launch ros_test gazebo_slam.launch.py web_bind_address:=127.0.0.1
 ```
 
 Set `AEROSENTINEL_PASSWORD` before exposing the dashboard on a network.
+
+The launch file sets dashboard credentials explicitly. To choose different
+credentials:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py web_user:=operator web_password:=change-me
+```
 
 If the RViz map appears to slide with the robot, make sure RViz Global Options uses fixed frame `map`, not `odom`. The robot should move in the map; the map should not move with the robot.
 

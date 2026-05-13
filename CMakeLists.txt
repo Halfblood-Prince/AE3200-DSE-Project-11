@@ -9,7 +9,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(ament_cmake REQUIRED)
+find_package(ament_cmake QUIET)
+if(NOT ament_cmake_FOUND)
+    message(FATAL_ERROR
+        "ament_cmake was not found. Install ROS 2 Jazzy dependencies and source "
+        "/opt/ros/jazzy/setup.bash before running colcon build.")
+endif()
 
 set(ROS_TEST_EXECUTABLES
     auto_drive

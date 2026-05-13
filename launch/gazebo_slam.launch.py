@@ -19,6 +19,8 @@ def generate_launch_description():
     web_enabled = LaunchConfiguration("web")
     web_port = LaunchConfiguration("web_port")
     web_bind_address = LaunchConfiguration("web_bind_address")
+    web_user = LaunchConfiguration("web_user")
+    web_password = LaunchConfiguration("web_password")
 
     default_world = PathJoinSubstitution([pkg_share, "robot.sdf"])
     default_gui_config = PathJoinSubstitution([pkg_share, "config", "gazebo_teleop.config"])
@@ -268,6 +270,8 @@ def generate_launch_description():
         additional_env={
             "PORT": web_port,
             "AEROSENTINEL_BIND_ADDRESS": web_bind_address,
+            "AEROSENTINEL_USER": web_user,
+            "AEROSENTINEL_PASSWORD": web_password,
             "AEROSENTINEL_PUBLIC_DIR": PathJoinSubstitution([pkg_share, "website", "public"]),
         },
         condition=IfCondition(web_enabled),
@@ -324,6 +328,16 @@ def generate_launch_description():
                 "web_bind_address",
                 default_value="0.0.0.0",
                 description="Bind address for the AeroSentinel C++ web dashboard.",
+            ),
+            DeclareLaunchArgument(
+                "web_user",
+                default_value="admin",
+                description="Username for the AeroSentinel C++ web dashboard.",
+            ),
+            DeclareLaunchArgument(
+                "web_password",
+                default_value="admin",
+                description="Password for the AeroSentinel C++ web dashboard.",
             ),
             web_server,
             gazebo,
