@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: aerosentinel-binaries-${{ github.workflow }}-${{ github.ref }}
@@ -30,6 +30,7 @@ concurrency:
 
 env:
   BUILD_TYPE: RelWithDebInfo
+  PUBLISH_BRANCH: ak/ros2
   ROS_DISTRO: jazzy
 
 jobs:
@@ -48,6 +49,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && env.PUBLISH_BRANCH || github.ref }}
 
       - name: Set up ROS
         uses: ros-tooling/setup-ros@v0.7
@@ -146,7 +149,7 @@ jobs:
             echo "No ros_test colcon log directory found at ${log_dir}"
           fi
 
-      - name: Stage binary folder
+      - name: Clear and populate binary folder
         shell: bash
         run: |
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
@@ -155,7 +158,7 @@ jobs:
             *) echo "Refusing to clean unexpected package_dir=${package_dir}"; exit 1 ;;
           esac
           mkdir -p "${package_dir}"
-          find "${package_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+          find "${package_dir}" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf -- {} +
           for executable in \
             auto_drive \
             map_filter \
@@ -174,5 +177,59 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ros_test-${{ matrix.bin_dir }}
-          path: bin/${{ matrix.bin_dir }}
+          path: bin/${{ matrix.bin_dir }}/*
           if-no-files-found: error
+
+  publish:
+    name: Publish binaries to repository
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.PUBLISH_BRANCH }}
+
+      - name: Clear repository binary folders
+        shell: bash
+        run: |
+          for package_dir in \
+            "${GITHUB_WORKSPACE}/bin/amd_x64" \
+            "${GITHUB_WORKSPACE}/bin/arm_x64"
+          do
+            case "${package_dir}" in
+              "${GITHUB_WORKSPACE}/bin/"*) ;;
+              *) echo "Refusing to clean unexpected package_dir=${package_dir}"; exit 1 ;;
+            esac
+            mkdir -p "${package_dir}"
+            find "${package_dir}" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf -- {} +
+          done
+
+      - name: Download amd_x64 binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: ros_test-amd_x64
+          path: bin/amd_x64
+
+      - name: Download arm_x64 binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: ros_test-arm_x64
+          path: bin/arm_x64
+
+      - name: Commit binaries
+        shell: bash
+        run: |
+          chmod +x bin/amd_x64/* bin/arm_x64/* 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bin/amd_x64/.gitignore bin/arm_x64/.gitignore
+          git add -f bin/amd_x64 bin/arm_x64
+          if git diff --cached --quiet; then
+            echo "No binary changes to commit."
+            exit 0
+          fi
+          git commit -m "Update Linux binary artifacts"
+          git push origin HEAD:${PUBLISH_BRANCH}
