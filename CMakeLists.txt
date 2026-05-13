@@ -104,9 +104,8 @@ else()
 
     add_executable(web_server website/src/main.cc)
     target_link_libraries(web_server
-        PRIVATE
-            Drogon::Drogon
-            ${OpenCV_LIBS})
+        Drogon::Drogon
+        ${OpenCV_LIBS})
     target_include_directories(web_server
         PRIVATE
             ${OpenCV_INCLUDE_DIRS})
