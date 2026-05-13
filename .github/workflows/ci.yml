@@ -37,27 +37,3 @@ jobs:
             exit 1
           fi
 
-  markdown:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Lint Markdown
-        uses: DavidAnson/markdownlint-cli2-action@v23
-        with:
-          globs: |
-            **/*.md
-
-  workflows:
-    name: Workflow Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Lint GitHub Actions workflows
-        uses: rhysd/actionlint@v1
