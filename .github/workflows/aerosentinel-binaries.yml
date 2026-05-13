@@ -149,8 +149,13 @@ jobs:
       - name: Stage binary folder
         shell: bash
         run: |
-          package_dir="${GITHUB_WORKSPACE}/artifacts/${{ matrix.bin_dir }}/bin/${{ matrix.bin_dir }}"
+          package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
+          case "${package_dir}" in
+            "${GITHUB_WORKSPACE}/bin/"*) ;;
+            *) echo "Refusing to clean unexpected package_dir=${package_dir}"; exit 1 ;;
+          esac
           mkdir -p "${package_dir}"
+          find "${package_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
           for executable in \
             auto_drive \
             map_filter \
@@ -169,5 +174,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ros_test-${{ matrix.bin_dir }}
-          path: artifacts/${{ matrix.bin_dir }}
+          path: bin/${{ matrix.bin_dir }}
           if-no-files-found: error
