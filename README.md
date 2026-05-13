@@ -40,13 +40,18 @@ The GitHub workflow `AeroSentinel Linux Binaries` builds the package for:
 - `amd_x64`
 - `arm_x64`
 
-The CI artifacts already use this directory layout, so they can be extracted at
-the repository root before running `colcon build`:
+On successful non-PR runs, the workflow publishes the generated executables back
+to the `ak/ros2` branch under:
 
 ```text
 bin/amd_x64/
 bin/arm_x64/
 ```
+
+After cloning `ak/ros2`, `colcon build` automatically installs the complete
+prebuilt binary set for the current CPU architecture when it is present. The
+workflow artifacts are still uploaded to each Actions run for download/debugging,
+but a normal clone does not require manually extracting them.
 
 Each folder must contain the complete executable set: `auto_drive`, `map_filter`,
 `map_monitor`, `nav2_waypoint_explorer`, `odom_to_tf`, `scan_to_chassis`,
@@ -75,7 +80,7 @@ The launch starts:
 - `map_filter`, republishing only non-empty SLAM maps as `/map_valid`
 - RViz
 - `map_monitor`, which reports when `/map` is received
-- AeroSentinel C++ dashboard on port `8080`, displaying the front camera feed as an OpenCV-encoded MJPEG stream and publishing manual keyboard commands to `/cmd_vel`
+- AeroSentinel C++ dashboard on port `8080`, displaying the front camera feed over a WebSocket-backed 60 FPS live stream and publishing manual keyboard commands to `/cmd_vel`
 - Nav2 navigation servers, costmaps, behavior tree navigator, waypoint follower, and map saver only when `nav2:=true`
 - `nav2_waypoint_explorer` only when both `nav2:=true` and `explore:=true`
 
@@ -120,10 +125,9 @@ To keep the dashboard bound to localhost only:
 ros2 launch ros_test gazebo_slam.launch.py web_bind_address:=127.0.0.1
 ```
 
-Set `AEROSENTINEL_PASSWORD` before exposing the dashboard on a network.
-
-The launch file sets dashboard credentials explicitly. To choose different
-credentials:
+The launch file sets dashboard credentials explicitly. The defaults are
+`admin` / `admin`. Choose different credentials before exposing the dashboard on
+a network:
 
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py web_user:=operator web_password:=change-me
