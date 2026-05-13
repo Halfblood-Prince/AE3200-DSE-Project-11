@@ -1,4 +1,5 @@
 #include <drogon/drogon.h>
+#include <drogon/WebSocketController.h>
 #include <geometry_msgs/msg/twist.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
@@ -30,6 +31,8 @@ namespace
 constexpr const char *kSessionCookieName = "aerosentinel_session";
 constexpr const char *kDefaultCameraTopic = "/front_camera/image";
 constexpr int kDefaultJpegQuality = 85;
+constexpr int kCameraStreamFps = 60;
+constexpr int kCameraStreamFramePeriodUs = 1000000 / kCameraStreamFps;
 
 struct AuthConfig
 {
@@ -568,9 +571,13 @@ class CameraFrameStore
                                             std::chrono::milliseconds timeout) const
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        condition_.wait_for(lock, timeout, [&] {
+        const auto hasNewFrame = condition_.wait_for(lock, timeout, [&] {
             return !jpeg_.empty() && sequence_ != lastSequence;
         });
+        if (!hasNewFrame)
+        {
+            return std::nullopt;
+        }
         return snapshotLocked();
     }
 
@@ -594,6 +601,78 @@ class CameraFrameStore
     std::string encoding_;
     uint64_t sequence_{0};
     std::string topic_{kDefaultCameraTopic};
+};
+
+class CameraStreamSocket : public drogon::WebSocketController<CameraStreamSocket, false>
+{
+  public:
+    CameraStreamSocket(std::shared_ptr<SessionStore> sessions,
+                       std::shared_ptr<CameraFrameStore> cameraFrames)
+        : sessions_(std::move(sessions)), cameraFrames_(std::move(cameraFrames))
+    {
+    }
+
+    void handleNewMessage(const drogon::WebSocketConnectionPtr &,
+                          std::string &&,
+                          const drogon::WebSocketMessageType &) override
+    {
+    }
+
+    void handleNewConnection(const drogon::HttpRequestPtr &request,
+                             const drogon::WebSocketConnectionPtr &connection) override
+    {
+        if (!isAuthenticated(request, sessions_))
+        {
+            connection->shutdown();
+            return;
+        }
+
+        auto cameraFrames = cameraFrames_;
+        std::thread([cameraFrames, connection] {
+            uint64_t lastSequence = 0;
+            auto nextFrameAt = std::chrono::steady_clock::now();
+
+            while (connection->connected())
+            {
+                auto frame = cameraFrames->waitForFrame(lastSequence, std::chrono::seconds(1));
+                if (!frame)
+                {
+                    continue;
+                }
+                lastSequence = frame->sequence;
+
+                const auto now = std::chrono::steady_clock::now();
+                if (now < nextFrameAt)
+                {
+                    std::this_thread::sleep_until(nextFrameAt);
+                    if (!connection->connected())
+                    {
+                        break;
+                    }
+                }
+
+                connection->send(
+                    reinterpret_cast<const char *>(frame->jpeg.data()),
+                    static_cast<uint64_t>(frame->jpeg.size()),
+                    drogon::WebSocketMessageType::Binary);
+
+                nextFrameAt = std::chrono::steady_clock::now() +
+                              std::chrono::microseconds(kCameraStreamFramePeriodUs);
+            }
+        }).detach();
+    }
+
+    void handleConnectionClosed(const drogon::WebSocketConnectionPtr &) override
+    {
+    }
+
+    WS_PATH_LIST_BEGIN
+    WS_PATH_ADD("/api/camera/live");
+    WS_PATH_LIST_END
+
+  private:
+    std::shared_ptr<SessionStore> sessions_;
+    std::shared_ptr<CameraFrameStore> cameraFrames_;
 };
 
 class RosBridge
@@ -844,6 +923,16 @@ void addCameraHeaders(const drogon::HttpResponsePtr &response, const CameraFrame
     response->addHeader("X-Camera-Age", std::to_string(age));
 }
 
+drogon::HttpResponsePtr cameraJpegResponse(const CameraFrame &frame)
+{
+    auto response = drogon::HttpResponse::newHttpResponse();
+    response->setContentTypeCodeAndCustomString(drogon::CT_CUSTOM, "image/jpeg");
+    response->setBody(std::string(reinterpret_cast<const char *>(frame.jpeg.data()),
+                                  frame.jpeg.size()));
+    addCameraHeaders(response, frame);
+    return noStore(response);
+}
+
 void registerApiHandlers(const std::shared_ptr<SessionStore> &sessions,
                          const std::shared_ptr<RosBridge> &rosBridge,
                          const std::shared_ptr<CameraFrameStore> &cameraFrames)
@@ -941,72 +1030,10 @@ void registerApiHandlers(const std::shared_ptr<SessionStore> &sessions,
                 return;
             }
 
-            auto response = drogon::HttpResponse::newHttpResponse();
-            response->setContentTypeCodeAndCustomString(drogon::CT_CUSTOM, "image/jpeg");
-            response->setBody(std::string(reinterpret_cast<const char *>(frame->jpeg.data()),
-                                          frame->jpeg.size()));
-            addCameraHeaders(response, *frame);
-            callback(noStore(response));
+            callback(cameraJpegResponse(*frame));
         },
         {drogon::Get});
 
-    drogon::app().registerHandler(
-        "/api/camera/stream.mjpg",
-        [sessions, cameraFrames](const drogon::HttpRequestPtr &request,
-                                 std::function<void(const drogon::HttpResponsePtr &)> &&callback) {
-            if (!isAuthenticated(request, sessions))
-            {
-                callback(jsonError("authentication_required", drogon::k401Unauthorized));
-                return;
-            }
-
-            if (!cameraFrames->get())
-            {
-                callback(jsonError("camera_frame_unavailable", drogon::k503ServiceUnavailable));
-                return;
-            }
-
-            auto response = drogon::HttpResponse::newAsyncStreamResponse(
-                [cameraFrames](drogon::ResponseStreamPtr stream) mutable {
-                    std::thread([cameraFrames, stream = std::move(stream)]() mutable {
-                        uint64_t lastSequence = 0;
-                        while (true)
-                        {
-                            const auto frame = cameraFrames->waitForFrame(
-                                lastSequence,
-                                std::chrono::milliseconds(2000));
-
-                            if (!frame)
-                            {
-                                continue;
-                            }
-
-                            lastSequence = frame->sequence;
-                            std::string part =
-                                "--frame\r\n"
-                                "Content-Type: image/jpeg\r\n"
-                                "Cache-Control: no-store\r\n\r\n";
-                            part.append(reinterpret_cast<const char *>(frame->jpeg.data()),
-                                        frame->jpeg.size());
-                            part.append("\r\n");
-
-                            if (!stream->send(part))
-                            {
-                                break;
-                            }
-                        }
-                        stream->close();
-                    }).detach();
-                },
-                true);
-            response->setContentTypeCodeAndCustomString(
-                drogon::CT_CUSTOM,
-                "multipart/x-mixed-replace; boundary=frame");
-            response->addHeader("Cache-Control", "no-store");
-            response->addHeader("X-Accel-Buffering", "no");
-            callback(response);
-        },
-        {drogon::Get});
 }
 } // namespace
 
@@ -1036,6 +1063,7 @@ int main(int argc, char *argv[])
     app.setDocumentRoot(publicDir.string());
     app.setLogLevel(trantor::Logger::kWarn);
     app.addListener(bindAddress, port);
+    app.registerController(std::make_shared<CameraStreamSocket>(sessions, cameraFrames));
 
     registerProtectedPage("/", indexPath, sessions);
     registerProtectedPage("/mission/alpha-0426", indexPath, sessions);

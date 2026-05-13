@@ -21,6 +21,12 @@ document.querySelectorAll(".metric strong").forEach((node, index) => {
 
 const cameraFeed = document.querySelector("#camera-feed");
 const cameraStatus = document.querySelector("#camera-status");
+let cameraSocket = null;
+let cameraReconnectTimer = null;
+let pendingCameraFrame = null;
+let cameraDecoding = false;
+let cameraFrameCount = 0;
+let cameraFrameWindowStarted = performance.now();
 
 function setCameraStatus(label) {
   if (!cameraStatus) {
@@ -29,25 +35,139 @@ function setCameraStatus(label) {
   cameraStatus.textContent = label;
 }
 
-function connectCameraFeed() {
-  if (!cameraFeed) {
+function cameraStreamUrl() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/camera/live`;
+}
+
+function drawCameraBitmap(bitmap) {
+  const context = cameraFeed?.getContext?.("2d");
+  if (!context) {
     return;
   }
 
+  const rect = cameraFeed.getBoundingClientRect();
+  const pixelRatio = window.devicePixelRatio || 1;
+  const displayWidth = rect.width || bitmap.width;
+  const displayHeight = rect.height || bitmap.height;
+  const canvasWidth = Math.max(1, Math.round(displayWidth * pixelRatio));
+  const canvasHeight = Math.max(1, Math.round(displayHeight * pixelRatio));
+
+  if (cameraFeed.width !== canvasWidth || cameraFeed.height !== canvasHeight) {
+    cameraFeed.width = canvasWidth;
+    cameraFeed.height = canvasHeight;
+  }
+
+  const scale = Math.max(canvasWidth / bitmap.width, canvasHeight / bitmap.height);
+  const drawWidth = bitmap.width * scale;
+  const drawHeight = bitmap.height * scale;
+  const offsetX = (canvasWidth - drawWidth) / 2;
+  const offsetY = (canvasHeight - drawHeight) / 2;
+
+  context.clearRect(0, 0, canvasWidth, canvasHeight);
+  context.drawImage(bitmap, offsetX, offsetY, drawWidth, drawHeight);
+}
+
+function updateCameraFrameRate() {
+  cameraFrameCount += 1;
+  const now = performance.now();
+  const elapsed = now - cameraFrameWindowStarted;
+  if (elapsed < 1000) {
+    return;
+  }
+
+  const fps = Math.round((cameraFrameCount * 1000) / elapsed);
+  setCameraStatus(`${Math.min(fps, 60)} fps  Live`);
+  cameraFrameCount = 0;
+  cameraFrameWindowStarted = now;
+}
+
+async function decodeCameraFrames() {
+  cameraDecoding = true;
+
+  while (pendingCameraFrame) {
+    const frame = pendingCameraFrame;
+    pendingCameraFrame = null;
+
+    try {
+      const bitmap = await createImageBitmap(frame);
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          drawCameraBitmap(bitmap);
+          bitmap.close?.();
+          updateCameraFrameRate();
+          resolve();
+        });
+      });
+    } catch {
+      cameraFeed.dataset.live = "false";
+      setCameraStatus("Waiting");
+    }
+  }
+
+  cameraDecoding = false;
+}
+
+function renderCameraFrame(frame) {
+  pendingCameraFrame = frame;
+  if (!cameraDecoding) {
+    decodeCameraFrames();
+  }
+}
+
+function connectCameraFeed() {
+  if (!cameraFeed?.getContext) {
+    return;
+  }
+
+  clearTimeout(cameraReconnectTimer);
+  if (cameraSocket) {
+    cameraSocket.onclose = null;
+    cameraSocket.close();
+  }
+
   setCameraStatus("Connecting");
-  cameraFeed.onload = () => {
+  const socket = new WebSocket(cameraStreamUrl());
+  cameraSocket = socket;
+  socket.binaryType = "blob";
+
+  socket.onopen = () => {
     cameraFeed.dataset.live = "true";
-    setCameraStatus("1080p  Live");
+    setCameraStatus("Live");
+    cameraFrameCount = 0;
+    cameraFrameWindowStarted = performance.now();
   };
-  cameraFeed.onerror = () => {
+
+  socket.onmessage = (event) => {
+    if (typeof event.data !== "string") {
+      renderCameraFrame(event.data);
+    }
+  };
+
+  socket.onerror = () => {
     cameraFeed.dataset.live = "false";
     setCameraStatus("Waiting");
-    setTimeout(connectCameraFeed, 1500);
   };
-  cameraFeed.src = `/api/camera/stream.mjpg?t=${Date.now()}`;
+
+  socket.onclose = () => {
+    if (cameraSocket !== socket) {
+      return;
+    }
+    cameraSocket = null;
+    cameraFeed.dataset.live = "false";
+    setCameraStatus("Waiting");
+    cameraReconnectTimer = setTimeout(connectCameraFeed, 1500);
+  };
 }
 
 connectCameraFeed();
+
+window.addEventListener("beforeunload", () => {
+  if (cameraSocket) {
+    cameraSocket.onclose = null;
+    cameraSocket.close();
+  }
+});
 
 const controlStatus = document.querySelector("#control-status");
 const driveSpeedValue = document.querySelector("#drive-speed");
