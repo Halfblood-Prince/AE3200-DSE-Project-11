@@ -59,10 +59,21 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            dpkg-dev \
+            libc-ares-dev \
+            libbrotli-dev \
             libdrogon-dev \
+            libhiredis-dev \
+            libjsoncpp-dev \
             libmariadb-dev \
             libmariadb-dev-compat \
             libopencv-dev \
+            libpq-dev \
+            libsqlite3-dev \
+            libssl-dev \
+            pkg-config \
+            uuid-dev \
+            zlib1g-dev \
             python3-colcon-common-extensions \
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
@@ -73,6 +84,16 @@ jobs:
             ros-${ROS_DISTRO}-sensor-msgs \
             ros-${ROS_DISTRO}-tf2 \
             ros-${ROS_DISTRO}-tf2-ros
+
+      - name: Verify Drogon CMake package
+        shell: bash
+        run: |
+          cat > "${RUNNER_TEMP}/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.21)
+          project(drogon_probe LANGUAGES CXX)
+          find_package(Drogon CONFIG REQUIRED)
+          EOF
+          cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/drogon_probe_build" -Wno-dev
 
       - name: Build ROS 2 package from source
         shell: bash
@@ -88,9 +109,16 @@ jobs:
             mysql_lib_dir="$(mysql_config --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -n1)"
           fi
           mysql_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 \( -name 'libmysqlclient.so' -o -name 'libmariadb.so' \) -print -quit)"
+          hiredis_include_dir="$(pkg-config --variable=includedir hiredis 2>/dev/null || true)"
+          if [ -z "${hiredis_include_dir}" ]; then
+            hiredis_include_dir="/usr/include"
+          fi
+          hiredis_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 -name 'libhiredis.so' -print -quit)"
           echo "mysql_include_dir=${mysql_include_dir}"
           echo "mysql_lib_dir=${mysql_lib_dir}"
           echo "mysql_library=${mysql_library}"
+          echo "hiredis_include_dir=${hiredis_include_dir}"
+          echo "hiredis_library=${hiredis_library}"
           mkdir -p "${RUNNER_TEMP}/ros_ws/src"
           ln -s "${GITHUB_WORKSPACE}" "${RUNNER_TEMP}/ros_ws/src/ros_test"
           cd "${RUNNER_TEMP}/ros_ws"
@@ -103,6 +131,8 @@ jobs:
               -DMYSQL_LIB_DIR="${mysql_lib_dir}" \
               -DMYSQL_LIBRARY_DIR="${mysql_lib_dir}" \
               -DMYSQL_LIBRARY="${mysql_library}" \
+              -DHIREDIS_INCLUDE_DIR="${hiredis_include_dir}" \
+              -DHIREDIS_LIBRARY="${hiredis_library}" \
               -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
 
       - name: Show colcon logs on failure
