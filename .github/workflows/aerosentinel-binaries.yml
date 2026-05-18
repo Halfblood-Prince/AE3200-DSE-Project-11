@@ -175,6 +175,7 @@ jobs:
       - name: Clear and populate binary folder
         shell: bash
         run: |
+          source "/opt/ros/${ROS_DISTRO}/setup.bash"
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
           case "${package_dir}" in
             "${GITHUB_WORKSPACE}/bin/"*) ;;
@@ -229,8 +230,9 @@ jobs:
             exit 1
           fi
 
-          if ldd "${package_dir}/web_server" | grep -q "not found"; then
-            ldd "${package_dir}/web_server"
+          ldd "${package_dir}/web_server" > "${RUNNER_TEMP}/web_server.final.ldd"
+          if grep -q "not found" "${RUNNER_TEMP}/web_server.final.ldd"; then
+            cat "${RUNNER_TEMP}/web_server.final.ldd"
             exit 1
           fi
 
