@@ -1,0 +1,28 @@
+{
+  "title": "Propeller Design",
+  "criteria": [
+    "Thrust Coefficient $C_T$",
+    "Stability",
+    "Efficiency",
+    "Complexity"
+  ],
+  "criteria_latex": ["C_T", "\\text{stab}", "\\text{eff}", "\\text{comp}"],
+  "weights": [2, 4, 3, 4],
+  "options": ["Conventional Propeller", "Toroidal Propeller"],
+  "scores": [
+    [3, 4],
+    [3, 4],
+    [3, 1],
+    [5, 2]
+  ],
+  "adjustment_criterion_index": 3,
+  "latex": {
+    "label": "propDesign",
+    "caption_title": "propeller design trade-off",
+    "subsection_title": "Propeller Design",
+    "subsection_label": "subsec:propDesign_Sensitivity"
+  },
+  "weight_range": [1, 5],
+  "score_range":  [1, 5],
+  "monte_carlo_n": 50000
+}
