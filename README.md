@@ -6,8 +6,11 @@ This package launches a Gazebo Harmonic simulation of a differential-drive lidar
 
 ```bash
 sudo apt update
-sudo apt install python3-colcon-common-extensions cmake dpkg-dev g++ libc-ares-dev libbrotli-dev libdrogon-dev libhiredis-dev libjsoncpp-dev libmariadb-dev libmariadb-dev-compat libopencv-dev libpq-dev libsqlite3-dev libssl-dev pkg-config uuid-dev zlib1g-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-rclcpp-action ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs ros-jazzy-nav2-bringup ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-ros-gz-sim ros-jazzy-rviz2 ros-jazzy-slam-toolbox ros-jazzy-tf2 ros-jazzy-tf2-ros
+sudo apt install python3-colcon-common-extensions cmake dpkg-dev g++ libc-ares-dev libavcodec-dev libavutil-dev libbrotli-dev libdrogon-dev libhiredis-dev libjsoncpp-dev libmariadb-dev libmariadb-dev-compat libopencv-dev libpq-dev libsqlite3-dev libssl-dev libswscale-dev libx264-dev pkg-config uuid-dev zlib1g-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-rclcpp-action ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs ros-jazzy-nav2-bringup ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-ros-gz-sim ros-jazzy-rviz2 ros-jazzy-slam-toolbox ros-jazzy-tf2 ros-jazzy-tf2-ros
 ```
+
+Install libdatachannel from your distro, vcpkg, or source package as well; the
+web dashboard CMake target expects `find_package(LibDataChannel)` to work.
 
 ## Build
 
@@ -25,13 +28,14 @@ source install/setup.bash
 
 If `source /opt/ros/jazzy/setup.bash` fails, install ROS 2 Jazzy and the
 dependencies listed above first. The prebuilt binaries in `bin/` avoid compiling
-the C++ executables, but `colcon build` still needs the ROS 2 `ament_cmake`
-environment to install the package.
+the non-web ROS node executables, but `colcon build` still needs the ROS 2
+`ament_cmake` environment to install the package.
 
 The ROS nodes and the AeroSentinel web server are C++ executables. If a complete
 prebuilt binary set exists for the current CPU in `bin/amd_x64` or `bin/arm_x64`,
-the CMake build installs those binaries. Otherwise, `colcon` compiles the C++
-sources in `src/` and `website/src/`.
+the CMake build installs the non-web ROS node binaries. The H.264 WebRTC web
+server always compiles from `website/src/` so it links against the local FFmpeg
+and libdatachannel packages.
 
 ## Prebuilt Linux binaries
 
@@ -53,9 +57,9 @@ prebuilt binary set for the current CPU architecture when it is present. The
 workflow artifacts are still uploaded to each Actions run for download/debugging,
 but a normal clone does not require manually extracting them.
 
-Each folder must contain the complete executable set: `auto_drive`, `map_filter`,
-`map_monitor`, `nav2_waypoint_explorer`, `odom_to_tf`, `scan_to_chassis`,
-`simple_mapper`, and `web_server`.
+Each folder must contain the complete prebuilt non-web executable set:
+`auto_drive`, `map_filter`, `map_monitor`, `nav2_waypoint_explorer`,
+`odom_to_tf`, `scan_to_chassis`, and `simple_mapper`.
 
 ## Launch
 
@@ -80,7 +84,7 @@ The launch starts:
 - `map_filter`, republishing only non-empty SLAM maps as `/map_valid`
 - RViz
 - `map_monitor`, which reports when `/map` is received
-- AeroSentinel C++ dashboard on port `8080`, displaying the front camera feed over a WebSocket-backed 60 FPS live stream and publishing manual keyboard commands to `/cmd_vel`
+- AeroSentinel C++ dashboard on port `8080`, displaying the front camera feed as a source-encoded H.264 WebRTC video track and publishing manual keyboard commands to `/cmd_vel`
 - Nav2 navigation servers, costmaps, behavior tree navigator, waypoint follower, and map saver only when `nav2:=true`
 - `nav2_waypoint_explorer` only when both `nav2:=true` and `explore:=true`
 

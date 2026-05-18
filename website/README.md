@@ -2,7 +2,7 @@
 
 A Drogon C++ web app that serves the AeroSentinel drone mission dashboard.
 
-The dashboard UI lives in `public/`. The C++ backend is `src/main.cc` and provides login, logout, protected dashboard routes, static assets, the mission JSON API, an OpenCV-encoded MJPEG camera stream from ROS image messages, and manual `/cmd_vel` controls.
+The dashboard UI lives in `public/`. The C++ backend is `src/main.cc` and provides login, logout, protected dashboard routes, static assets, the mission JSON API, a WebRTC H.264 video track encoded at the ROS image source, and manual `/cmd_vel` controls.
 
 ## Build
 
@@ -10,8 +10,10 @@ Install ROS 2, Drogon, and OpenCV development dependencies. On Ubuntu 24.04 with
 
 ```bash
 sudo apt update
-sudo apt install -y cmake g++ libdrogon-dev libopencv-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs
+sudo apt install -y cmake g++ libavcodec-dev libavutil-dev libdrogon-dev libopencv-dev libswscale-dev libx264-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs
 ```
+
+Install libdatachannel from your distro, vcpkg, or source package as well; CMake expects the `LibDataChannel` package to be findable.
 
 From this `website` directory:
 
@@ -66,7 +68,16 @@ Default development credentials are `admin` / `admin` when `AEROSENTINEL_PASSWOR
 - `AEROSENTINEL_PASSWORD`: login password, default `admin`
 - `AEROSENTINEL_SECURE_COOKIES`: set to `true` behind HTTPS
 - `AEROSENTINEL_CAMERA_TOPIC`: ROS image topic for the live feed, default `/front_camera/image`
-- `AEROSENTINEL_JPEG_QUALITY`: OpenCV JPEG stream quality from `1` to `100`, default `85`
+- `AEROSENTINEL_JPEG_QUALITY`: OpenCV JPEG snapshot quality from `1` to `100`, default `85`
+- `AEROSENTINEL_H264_ENCODER`: FFmpeg H.264 encoder name, default `libx264`
+- `AEROSENTINEL_H264_BITRATE`: H.264 target bitrate in bits per second, default `6000000`
+- `AEROSENTINEL_H264_GOP_FRAMES`: H.264 keyframe interval in frames, default `60`
+- `AEROSENTINEL_H264_PROFILE`: encoder profile option, default `baseline`
+- `AEROSENTINEL_H264_PROFILE_ID`: WebRTC H.264 SDP profile-level-id, default `42e01f`
+- `AEROSENTINEL_H264_FMTP`: full WebRTC H.264 SDP FMTP string, default `profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1`
+- `AEROSENTINEL_X264_PARAMS`: x264 low-level params, default `keyint=60:min-keyint=60:scenecut=0:repeat-headers=1:annexb=1`
+- `AEROSENTINEL_WEBRTC_ICE_SERVERS`: optional comma-separated STUN/TURN server URLs for WebRTC ICE
+- `AEROSENTINEL_WEBRTC_MAX_BUFFERED_BYTES`: max queued WebRTC media bytes before dropping camera frames, default `262144`
 - `AEROSENTINEL_MAX_LINEAR`: maximum manual linear speed in m/s, default `2.5`
 - `AEROSENTINEL_MAX_ANGULAR`: maximum manual turn speed in rad/s, default `1.8`
 

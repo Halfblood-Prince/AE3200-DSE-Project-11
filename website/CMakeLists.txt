@@ -9,7 +9,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 find_package(Drogon CONFIG REQUIRED)
+find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
+find_package(LibDataChannel CONFIG REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -22,6 +26,10 @@ add_executable(aerosentinel-control
 target_link_libraries(aerosentinel-control
     PRIVATE
         Drogon::Drogon
+        FFmpeg::avcodec
+        FFmpeg::avutil
+        FFmpeg::swscale
+        LibDataChannel::LibDataChannel
         ${OpenCV_LIBS})
 
 target_include_directories(aerosentinel-control

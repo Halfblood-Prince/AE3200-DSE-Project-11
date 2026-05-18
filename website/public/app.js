@@ -21,51 +21,18 @@ document.querySelectorAll(".metric strong").forEach((node, index) => {
 
 const cameraFeed = document.querySelector("#camera-feed");
 const cameraStatus = document.querySelector("#camera-status");
-let cameraSocket = null;
+let cameraPeerConnection = null;
 let cameraReconnectTimer = null;
-let pendingCameraFrame = null;
-let cameraDecoding = false;
 let cameraFrameCount = 0;
 let cameraFrameWindowStarted = performance.now();
+let cameraConnectAttempt = 0;
+let cameraFrameCallbackId = null;
 
 function setCameraStatus(label) {
   if (!cameraStatus) {
     return;
   }
   cameraStatus.textContent = label;
-}
-
-function cameraStreamUrl() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/camera/live`;
-}
-
-function drawCameraBitmap(bitmap) {
-  const context = cameraFeed?.getContext?.("2d");
-  if (!context) {
-    return;
-  }
-
-  const rect = cameraFeed.getBoundingClientRect();
-  const pixelRatio = window.devicePixelRatio || 1;
-  const displayWidth = rect.width || bitmap.width;
-  const displayHeight = rect.height || bitmap.height;
-  const canvasWidth = Math.max(1, Math.round(displayWidth * pixelRatio));
-  const canvasHeight = Math.max(1, Math.round(displayHeight * pixelRatio));
-
-  if (cameraFeed.width !== canvasWidth || cameraFeed.height !== canvasHeight) {
-    cameraFeed.width = canvasWidth;
-    cameraFeed.height = canvasHeight;
-  }
-
-  const scale = Math.max(canvasWidth / bitmap.width, canvasHeight / bitmap.height);
-  const drawWidth = bitmap.width * scale;
-  const drawHeight = bitmap.height * scale;
-  const offsetX = (canvasWidth - drawWidth) / 2;
-  const offsetY = (canvasHeight - drawHeight) / 2;
-
-  context.clearRect(0, 0, canvasWidth, canvasHeight);
-  context.drawImage(bitmap, offsetX, offsetY, drawWidth, drawHeight);
 }
 
 function updateCameraFrameRate() {
@@ -77,96 +44,184 @@ function updateCameraFrameRate() {
   }
 
   const fps = Math.round((cameraFrameCount * 1000) / elapsed);
-  setCameraStatus(`${Math.min(fps, 60)} fps  Live`);
+  setCameraStatus(`${Math.min(fps, 60)} fps  H.264`);
   cameraFrameCount = 0;
   cameraFrameWindowStarted = now;
 }
 
-async function decodeCameraFrames() {
-  cameraDecoding = true;
+function startCameraFrameMonitor() {
+  if (!cameraFeed?.requestVideoFrameCallback) {
+    setCameraStatus("H.264");
+    return;
+  }
 
-  while (pendingCameraFrame) {
-    const frame = pendingCameraFrame;
-    pendingCameraFrame = null;
+  if (cameraFrameCallbackId !== null && cameraFeed.cancelVideoFrameCallback) {
+    cameraFeed.cancelVideoFrameCallback(cameraFrameCallbackId);
+  }
 
-    try {
-      const bitmap = await createImageBitmap(frame);
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => {
-          drawCameraBitmap(bitmap);
-          bitmap.close?.();
-          updateCameraFrameRate();
-          resolve();
-        });
-      });
-    } catch {
-      cameraFeed.dataset.live = "false";
-      setCameraStatus("Waiting");
+  const onFrame = () => {
+    updateCameraFrameRate();
+    if (cameraFeed.srcObject) {
+      cameraFrameCallbackId = cameraFeed.requestVideoFrameCallback(onFrame);
     }
-  }
-
-  cameraDecoding = false;
+  };
+  cameraFrameCallbackId = cameraFeed.requestVideoFrameCallback(onFrame);
 }
 
-function renderCameraFrame(frame) {
-  pendingCameraFrame = frame;
-  if (!cameraDecoding) {
-    decodeCameraFrames();
+function closeCameraFeed() {
+  if (cameraFrameCallbackId !== null && cameraFeed?.cancelVideoFrameCallback) {
+    cameraFeed.cancelVideoFrameCallback(cameraFrameCallbackId);
+    cameraFrameCallbackId = null;
+  }
+
+  if (cameraFeed) {
+    cameraFeed.pause?.();
+    cameraFeed.srcObject = null;
+    cameraFeed.dataset.live = "false";
+  }
+
+  if (cameraPeerConnection) {
+    cameraPeerConnection.ontrack = null;
+    cameraPeerConnection.onconnectionstatechange = null;
+    cameraPeerConnection.oniceconnectionstatechange = null;
+    cameraPeerConnection.close();
+    cameraPeerConnection = null;
   }
 }
 
-function connectCameraFeed() {
-  if (!cameraFeed?.getContext) {
+function scheduleCameraReconnect(delay = 1500) {
+  clearTimeout(cameraReconnectTimer);
+  if (cameraFeed) {
+    cameraFeed.dataset.live = "false";
+  }
+  setCameraStatus("Waiting");
+  cameraReconnectTimer = setTimeout(connectCameraFeed, delay);
+}
+
+function waitForIceGatheringComplete(peerConnection, timeoutMs = 8000) {
+  if (peerConnection.iceGatheringState === "complete") {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      peerConnection.removeEventListener("icegatheringstatechange", onStateChange);
+      reject(new Error("Timed out gathering local ICE candidates."));
+    }, timeoutMs);
+
+    function onStateChange() {
+      if (peerConnection.iceGatheringState !== "complete") {
+        return;
+      }
+      clearTimeout(timeout);
+      peerConnection.removeEventListener("icegatheringstatechange", onStateChange);
+      resolve();
+    }
+
+    peerConnection.addEventListener("icegatheringstatechange", onStateChange);
+  });
+}
+
+function cameraIceServerConfig(iceServers) {
+  return {
+    iceServers: iceServers.map((server) => ({ urls: server }))
+  };
+}
+
+async function connectCameraFeed() {
+  if (!cameraFeed) {
     return;
   }
 
   clearTimeout(cameraReconnectTimer);
-  if (cameraSocket) {
-    cameraSocket.onclose = null;
-    cameraSocket.close();
-  }
+  closeCameraFeed();
 
   setCameraStatus("Connecting");
-  const socket = new WebSocket(cameraStreamUrl());
-  cameraSocket = socket;
-  socket.binaryType = "blob";
+  const attempt = ++cameraConnectAttempt;
 
-  socket.onopen = () => {
-    cameraFeed.dataset.live = "true";
-    setCameraStatus("Live");
-    cameraFrameCount = 0;
-    cameraFrameWindowStarted = performance.now();
-  };
-
-  socket.onmessage = (event) => {
-    if (typeof event.data !== "string") {
-      renderCameraFrame(event.data);
+  try {
+    if (!window.RTCPeerConnection) {
+      throw new Error("WebRTC is not supported by this browser.");
     }
-  };
 
-  socket.onerror = () => {
-    cameraFeed.dataset.live = "false";
-    setCameraStatus("Waiting");
-  };
+    const configResponse = await fetch("/api/camera/webrtc/config", { cache: "no-store" });
+    if (!configResponse.ok) {
+      throw new Error("WebRTC camera config is unavailable.");
+    }
+    const config = await configResponse.json();
 
-  socket.onclose = () => {
-    if (cameraSocket !== socket) {
+    if (attempt !== cameraConnectAttempt) {
       return;
     }
-    cameraSocket = null;
-    cameraFeed.dataset.live = "false";
-    setCameraStatus("Waiting");
-    cameraReconnectTimer = setTimeout(connectCameraFeed, 1500);
-  };
+
+    const peerConnection = new RTCPeerConnection(
+      cameraIceServerConfig(config.iceServers || [])
+    );
+
+    cameraPeerConnection = peerConnection;
+    peerConnection.addTransceiver("video", { direction: "recvonly" });
+
+    peerConnection.ontrack = (event) => {
+      const [stream] = event.streams;
+      cameraFeed.srcObject = stream || new MediaStream([event.track]);
+      cameraFeed.dataset.live = "true";
+      setCameraStatus("H.264");
+      cameraFrameCount = 0;
+      cameraFrameWindowStarted = performance.now();
+      startCameraFrameMonitor();
+      cameraFeed.play?.().catch(() => {
+        setCameraStatus("Waiting");
+      });
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      if (["closed", "disconnected", "failed"].includes(peerConnection.connectionState)) {
+        if (cameraPeerConnection === peerConnection) {
+          scheduleCameraReconnect();
+        }
+      }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+      if (["closed", "disconnected", "failed"].includes(peerConnection.iceConnectionState)) {
+        if (cameraPeerConnection === peerConnection) {
+          scheduleCameraReconnect();
+        }
+      }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    await waitForIceGatheringComplete(peerConnection);
+
+    if (attempt !== cameraConnectAttempt || cameraPeerConnection !== peerConnection) {
+      return;
+    }
+
+    const answerResponse = await fetch("/api/camera/webrtc/offer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(peerConnection.localDescription)
+    });
+    if (!answerResponse.ok) {
+      throw new Error("WebRTC camera answer is unavailable.");
+    }
+
+    const answer = await answerResponse.json();
+    await peerConnection.setRemoteDescription(answer);
+  } catch {
+    if (attempt === cameraConnectAttempt) {
+      closeCameraFeed();
+      scheduleCameraReconnect();
+    }
+  }
 }
 
 connectCameraFeed();
 
 window.addEventListener("beforeunload", () => {
-  if (cameraSocket) {
-    cameraSocket.onclose = null;
-    cameraSocket.close();
-  }
+  clearTimeout(cameraReconnectTimer);
+  closeCameraFeed();
 });
 
 const controlStatus = document.querySelector("#control-status");

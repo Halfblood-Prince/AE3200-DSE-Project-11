@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/website/cmake")
+
 find_package(ament_cmake QUIET)
 if(NOT ament_cmake_FOUND)
     message(FATAL_ERROR
@@ -16,15 +18,14 @@ if(NOT ament_cmake_FOUND)
         "/opt/ros/jazzy/setup.bash before running colcon build.")
 endif()
 
-set(ROS_TEST_EXECUTABLES
+set(ROS_TEST_PREBUILT_EXECUTABLES
     auto_drive
     map_filter
     map_monitor
     nav2_waypoint_explorer
     odom_to_tf
     scan_to_chassis
-    simple_mapper
-    web_server)
+    simple_mapper)
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ROS_TEST_SYSTEM_PROCESSOR)
 set(ROS_TEST_BIN_ARCH "")
@@ -38,7 +39,7 @@ set(ROS_TEST_PREBUILT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ROS_TEST_BIN_ARCH}"
 set(ROS_TEST_PREBUILT_COMPLETE OFF)
 if(ROS_TEST_BIN_ARCH)
     set(ROS_TEST_PREBUILT_COMPLETE ON)
-    foreach(executable IN LISTS ROS_TEST_EXECUTABLES)
+    foreach(executable IN LISTS ROS_TEST_PREBUILT_EXECUTABLES)
         if(NOT EXISTS "${ROS_TEST_PREBUILT_DIR}/${executable}")
             set(ROS_TEST_PREBUILT_COMPLETE OFF)
         endif()
@@ -47,7 +48,7 @@ endif()
 
 option(
     ROS_TEST_USE_PREBUILT_BINARIES
-    "Install prebuilt executables from bin/<arch> instead of compiling package executables"
+    "Install prebuilt non-web executables from bin/<arch> instead of compiling those package executables"
     ${ROS_TEST_PREBUILT_COMPLETE})
 
 function(add_ros_executable target source)
@@ -62,13 +63,13 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         message(FATAL_ERROR "No prebuilt binary folder is defined for CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
-    foreach(executable IN LISTS ROS_TEST_EXECUTABLES)
+    foreach(executable IN LISTS ROS_TEST_PREBUILT_EXECUTABLES)
         if(NOT EXISTS "${ROS_TEST_PREBUILT_DIR}/${executable}")
             message(FATAL_ERROR "Missing prebuilt executable: ${ROS_TEST_PREBUILT_DIR}/${executable}")
         endif()
     endforeach()
 
-    message(STATUS "Installing prebuilt ros_test executables from ${ROS_TEST_PREBUILT_DIR}")
+    message(STATUS "Installing prebuilt non-web ros_test executables from ${ROS_TEST_PREBUILT_DIR}")
     install(PROGRAMS
         ${ROS_TEST_PREBUILT_DIR}/auto_drive
         ${ROS_TEST_PREBUILT_DIR}/map_filter
@@ -77,14 +78,11 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         ${ROS_TEST_PREBUILT_DIR}/odom_to_tf
         ${ROS_TEST_PREBUILT_DIR}/scan_to_chassis
         ${ROS_TEST_PREBUILT_DIR}/simple_mapper
-        ${ROS_TEST_PREBUILT_DIR}/web_server
         DESTINATION lib/${PROJECT_NAME})
 else()
-    find_package(Drogon CONFIG REQUIRED)
     find_package(geometry_msgs REQUIRED)
     find_package(nav2_msgs REQUIRED)
     find_package(nav_msgs REQUIRED)
-    find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
     find_package(rclcpp REQUIRED)
     find_package(rclcpp_action REQUIRED)
     find_package(sensor_msgs REQUIRED)
@@ -106,28 +104,40 @@ else()
     add_ros_executable(odom_to_tf src/odom_to_tf.cpp rclcpp geometry_msgs nav_msgs tf2_ros)
     add_ros_executable(scan_to_chassis src/scan_to_chassis.cpp rclcpp sensor_msgs)
     add_ros_executable(simple_mapper src/simple_mapper.cpp rclcpp nav_msgs sensor_msgs)
-
-    add_executable(web_server website/src/main.cc)
-    target_link_libraries(web_server
-        Drogon::Drogon
-        ${OpenCV_LIBS})
-    target_include_directories(web_server
-        PRIVATE
-            ${OpenCV_INCLUDE_DIRS})
-    ament_target_dependencies(web_server
-        rclcpp
-        geometry_msgs
-        sensor_msgs)
-    target_compile_definitions(web_server
-        PRIVATE
-            AEROSENTINEL_VERSION="${PROJECT_VERSION}")
-    add_custom_command(TARGET web_server POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/website/public"
-            "$<TARGET_FILE_DIR:web_server>/public")
-    install(TARGETS web_server
-        RUNTIME DESTINATION lib/${PROJECT_NAME})
 endif()
+
+find_package(Drogon CONFIG REQUIRED)
+find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
+find_package(LibDataChannel CONFIG REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+add_executable(web_server website/src/main.cc)
+target_link_libraries(web_server
+    Drogon::Drogon
+    FFmpeg::avcodec
+    FFmpeg::avutil
+    FFmpeg::swscale
+    LibDataChannel::LibDataChannel
+    ${OpenCV_LIBS})
+target_include_directories(web_server
+    PRIVATE
+        ${OpenCV_INCLUDE_DIRS})
+ament_target_dependencies(web_server
+    rclcpp
+    geometry_msgs
+    sensor_msgs)
+target_compile_definitions(web_server
+    PRIVATE
+        AEROSENTINEL_VERSION="${PROJECT_VERSION}")
+add_custom_command(TARGET web_server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/website/public"
+        "$<TARGET_FILE_DIR:web_server>/public")
+install(TARGETS web_server
+    RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 install(FILES
     README.md

@@ -64,6 +64,8 @@ jobs:
           sudo apt-get install -y \
             dpkg-dev \
             libc-ares-dev \
+            libavcodec-dev \
+            libavutil-dev \
             libbrotli-dev \
             libdrogon-dev \
             libhiredis-dev \
@@ -74,6 +76,8 @@ jobs:
             libpq-dev \
             libsqlite3-dev \
             libssl-dev \
+            libswscale-dev \
+            libx264-dev \
             pkg-config \
             uuid-dev \
             zlib1g-dev \
@@ -88,15 +92,33 @@ jobs:
             ros-${ROS_DISTRO}-tf2 \
             ros-${ROS_DISTRO}-tf2-ros
 
-      - name: Verify Drogon CMake package
+      - name: Install libdatachannel
+        shell: bash
+        run: |
+          git clone --depth 1 --branch v0.22.6 --recursive --shallow-submodules \
+            https://github.com/paullouisageneau/libdatachannel.git \
+            "${RUNNER_TEMP}/libdatachannel"
+          cmake -S "${RUNNER_TEMP}/libdatachannel" \
+            -B "${RUNNER_TEMP}/libdatachannel_build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DNO_EXAMPLES=ON \
+            -DNO_TESTS=ON
+          cmake --build "${RUNNER_TEMP}/libdatachannel_build" --parallel
+          sudo cmake --install "${RUNNER_TEMP}/libdatachannel_build"
+          sudo ldconfig
+
+      - name: Verify CMake packages
         shell: bash
         run: |
           cat > "${RUNNER_TEMP}/CMakeLists.txt" <<'EOF'
           cmake_minimum_required(VERSION 3.21)
-          project(drogon_probe LANGUAGES CXX)
+          project(dependency_probe LANGUAGES CXX)
           find_package(Drogon CONFIG REQUIRED)
+          list(APPEND CMAKE_MODULE_PATH "$ENV{GITHUB_WORKSPACE}/website/cmake")
+          find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
+          find_package(LibDataChannel CONFIG REQUIRED)
           EOF
-          cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/drogon_probe_build" -Wno-dev
+          cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/dependency_probe_build" -Wno-dev
 
       - name: Build ROS 2 package from source
         shell: bash
@@ -166,8 +188,7 @@ jobs:
             nav2_waypoint_explorer \
             odom_to_tf \
             scan_to_chassis \
-            simple_mapper \
-            web_server
+            simple_mapper
           do
             cp "${RUNNER_TEMP}/ros_ws/install/ros_test/lib/ros_test/${executable}" "${package_dir}/"
             chmod +x "${package_dir}/${executable}"

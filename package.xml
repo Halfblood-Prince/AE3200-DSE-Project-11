@@ -19,6 +19,8 @@
   <depend>tf2_ros</depend>
   <depend>dpkg-dev</depend>
   <depend>libc-ares-dev</depend>
+  <depend>libavcodec-dev</depend>
+  <depend>libavutil-dev</depend>
   <depend>libbrotli-dev</depend>
   <depend>libdrogon-dev</depend>
   <depend>libhiredis-dev</depend>
@@ -29,6 +31,8 @@
   <depend>libpq-dev</depend>
   <depend>libsqlite3-dev</depend>
   <depend>libssl-dev</depend>
+  <depend>libswscale-dev</depend>
+  <depend>libx264-dev</depend>
   <depend>pkg-config</depend>
   <depend>uuid-dev</depend>
   <depend>zlib1g-dev</depend>

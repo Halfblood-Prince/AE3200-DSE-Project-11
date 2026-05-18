@@ -71,6 +71,10 @@ def main():
     assert_status(status, 401, "protected API rejection")
     assert_contains(body, "authentication_required", "protected API rejection")
 
+    status, _, body = request(opener, f"{args.base_url}/api/camera/webrtc/config")
+    assert_status(status, 401, "protected WebRTC config rejection")
+    assert_contains(body, "authentication_required", "protected WebRTC config rejection")
+
     status, headers, _ = request(
         opener,
         f"{args.base_url}/login",
@@ -86,6 +90,11 @@ def main():
     status, _, body = request(opener, f"{args.base_url}/api/mission/alpha-0426")
     assert_status(status, 200, "authenticated API")
     assert_contains(body, "Sentinel-7B", "authenticated API")
+
+    status, _, body = request(opener, f"{args.base_url}/api/camera/webrtc/config")
+    assert_status(status, 200, "authenticated WebRTC config")
+    assert_contains(body, "webrtc-video", "authenticated WebRTC config")
+    assert_contains(body, "H264", "authenticated WebRTC config")
 
     status, _, body = request(
         opener,

@@ -4,6 +4,16 @@
   "description": "A Drogon C++ web dashboard for the AeroSentinel ROS 2 control center.",
   "dependencies": [
     "drogon",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": [
+        "avcodec",
+        "swscale",
+        "x264"
+      ]
+    },
+    "libdatachannel",
     "opencv"
   ]
 }
