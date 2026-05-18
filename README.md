@@ -5,5 +5,5 @@ Official repository of Group 11 of DSE 2025-26
 
 - [Main branch](../../tree/main)
 - [ROS](../../tree/ak/ros2)
-- [Budget](../../tree/documentation)
-- [Sensitivity Analysis](../../tree/testing)
+- [Budget](../../tree/mf/budget)
+- [Sensitivity Analysis](../../tree/ma/sensitivity/analysis)
