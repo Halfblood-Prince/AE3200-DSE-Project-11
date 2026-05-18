@@ -4,7 +4,12 @@ A Drogon C++ web app that serves the AeroSentinel drone mission dashboard.
 
 The dashboard UI lives in `public/`. The C++ backend is `src/main.cc` and provides login, logout, protected dashboard routes, static assets, the mission JSON API, a WebRTC H.264 video track encoded at the ROS image source, and manual `/cmd_vel` controls.
 
-## Build
+## Build From Source
+
+The normal ROS package build does not compile this app; it installs the shipped
+`web_server` binary and bundled shared libraries from `bin/<arch>`. Use these
+steps only when regenerating the shipped binaries or developing the web server
+itself.
 
 Install ROS 2, Drogon, and OpenCV development dependencies. On Ubuntu 24.04 with ROS 2 Jazzy:
 

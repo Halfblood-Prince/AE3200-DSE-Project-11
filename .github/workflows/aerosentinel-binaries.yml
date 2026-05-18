@@ -78,6 +78,7 @@ jobs:
             libssl-dev \
             libswscale-dev \
             libx264-dev \
+            patchelf \
             pkg-config \
             uuid-dev \
             zlib1g-dev \
@@ -188,17 +189,56 @@ jobs:
             nav2_waypoint_explorer \
             odom_to_tf \
             scan_to_chassis \
-            simple_mapper
+            simple_mapper \
+            web_server
           do
             cp "${RUNNER_TEMP}/ros_ws/install/ros_test/lib/ros_test/${executable}" "${package_dir}/"
             chmod +x "${package_dir}/${executable}"
           done
+          patchelf --set-rpath '$ORIGIN/lib:$ORIGIN' "${package_dir}/web_server"
+
+          mkdir -p "${package_dir}/lib"
+          ldd "${package_dir}/web_server" | awk '
+            $2 == "=>" && $3 ~ /^\// { print $3 }
+            $1 ~ /^\// { print $1 }
+          ' | sort -u > "${RUNNER_TEMP}/web_server.ldd"
+
+          while IFS= read -r dependency; do
+            [ -f "${dependency}" ] || continue
+            case "${dependency}" in
+              /opt/ros/*) continue ;;
+            esac
+
+            name="$(basename "${dependency}")"
+            case "${name}" in
+              ld-linux-*|libc.so.*|libdl.so.*|libgcc_s.so.*|libm.so.*|libpthread.so.*|libresolv.so.*|librt.so.*|libstdc++.so.*)
+                continue
+                ;;
+            esac
+
+            cp -L "${dependency}" "${package_dir}/lib/${name}"
+            chmod u+w "${package_dir}/lib/${name}" || true
+          done < "${RUNNER_TEMP}/web_server.ldd"
+
+          find "${package_dir}/lib" -type f -name "*.so*" -print0 | while IFS= read -r -d '' library; do
+            patchelf --set-rpath '$ORIGIN' "${library}" || true
+          done
+
+          if ! find "${package_dir}/lib" -type f -name "*.so*" -print -quit | grep -q .; then
+            echo "No web_server dependency libraries were bundled."
+            exit 1
+          fi
+
+          if ldd "${package_dir}/web_server" | grep -q "not found"; then
+            ldd "${package_dir}/web_server"
+            exit 1
+          fi
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: ros_test-${{ matrix.bin_dir }}
-          path: bin/${{ matrix.bin_dir }}/*
+          path: bin/${{ matrix.bin_dir }}
           if-no-files-found: error
 
   publish:
@@ -243,7 +283,7 @@ jobs:
       - name: Commit binaries
         shell: bash
         run: |
-          chmod +x bin/amd_x64/* bin/arm_x64/* 2>/dev/null || true
+          find bin/amd_x64 bin/arm_x64 -maxdepth 1 -type f ! -name .gitignore -exec chmod +x {} +
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add bin/amd_x64/.gitignore bin/arm_x64/.gitignore

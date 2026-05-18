@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 project(ros_test
     VERSION 0.1.0
     DESCRIPTION "Gazebo Harmonic lidar robot simulation with ROS 2 Jazzy SLAM Toolbox mapping"
-    LANGUAGES CXX)
+    LANGUAGES NONE)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,7 +25,8 @@ set(ROS_TEST_PREBUILT_EXECUTABLES
     nav2_waypoint_explorer
     odom_to_tf
     scan_to_chassis
-    simple_mapper)
+    simple_mapper
+    web_server)
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ROS_TEST_SYSTEM_PROCESSOR)
 set(ROS_TEST_BIN_ARCH "")
@@ -36,20 +37,12 @@ elseif(ROS_TEST_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
 endif()
 
 set(ROS_TEST_PREBUILT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ROS_TEST_BIN_ARCH}")
-set(ROS_TEST_PREBUILT_COMPLETE OFF)
-if(ROS_TEST_BIN_ARCH)
-    set(ROS_TEST_PREBUILT_COMPLETE ON)
-    foreach(executable IN LISTS ROS_TEST_PREBUILT_EXECUTABLES)
-        if(NOT EXISTS "${ROS_TEST_PREBUILT_DIR}/${executable}")
-            set(ROS_TEST_PREBUILT_COMPLETE OFF)
-        endif()
-    endforeach()
-endif()
+set(ROS_TEST_PREBUILT_LIB_DIR "${ROS_TEST_PREBUILT_DIR}/lib")
 
 option(
     ROS_TEST_USE_PREBUILT_BINARIES
-    "Install prebuilt non-web executables from bin/<arch> instead of compiling those package executables"
-    ${ROS_TEST_PREBUILT_COMPLETE})
+    "Install shipped executables and dependency libraries from bin/<arch> instead of compiling package code"
+    ON)
 
 function(add_ros_executable target source)
     add_executable(${target} ${source})
@@ -69,7 +62,17 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         endif()
     endforeach()
 
-    message(STATUS "Installing prebuilt non-web ros_test executables from ${ROS_TEST_PREBUILT_DIR}")
+    if(NOT IS_DIRECTORY "${ROS_TEST_PREBUILT_LIB_DIR}")
+        message(FATAL_ERROR "Missing prebuilt dependency bundle: ${ROS_TEST_PREBUILT_LIB_DIR}")
+    endif()
+
+    file(GLOB ROS_TEST_PREBUILT_DEPENDENCIES CONFIGURE_DEPENDS
+        "${ROS_TEST_PREBUILT_LIB_DIR}/*.so*")
+    if(NOT ROS_TEST_PREBUILT_DEPENDENCIES)
+        message(FATAL_ERROR "No prebuilt shared libraries found in ${ROS_TEST_PREBUILT_LIB_DIR}")
+    endif()
+
+    message(STATUS "Installing prebuilt ros_test executables and dependency bundle from ${ROS_TEST_PREBUILT_DIR}")
     install(PROGRAMS
         ${ROS_TEST_PREBUILT_DIR}/auto_drive
         ${ROS_TEST_PREBUILT_DIR}/map_filter
@@ -78,8 +81,15 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         ${ROS_TEST_PREBUILT_DIR}/odom_to_tf
         ${ROS_TEST_PREBUILT_DIR}/scan_to_chassis
         ${ROS_TEST_PREBUILT_DIR}/simple_mapper
+        ${ROS_TEST_PREBUILT_DIR}/web_server
         DESTINATION lib/${PROJECT_NAME})
+    install(DIRECTORY "${ROS_TEST_PREBUILT_LIB_DIR}/"
+        DESTINATION lib/${PROJECT_NAME}/lib
+        USE_SOURCE_PERMISSIONS
+        FILES_MATCHING PATTERN "*.so*")
 else()
+    enable_language(CXX)
+
     find_package(geometry_msgs REQUIRED)
     find_package(nav2_msgs REQUIRED)
     find_package(nav_msgs REQUIRED)
@@ -88,6 +98,10 @@ else()
     find_package(sensor_msgs REQUIRED)
     find_package(tf2 REQUIRED)
     find_package(tf2_ros REQUIRED)
+    find_package(Drogon CONFIG REQUIRED)
+    find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
+    find_package(LibDataChannel CONFIG REQUIRED)
+    find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
 
     add_ros_executable(auto_drive src/auto_drive.cpp rclcpp geometry_msgs sensor_msgs)
     add_ros_executable(map_filter src/map_filter.cpp rclcpp nav_msgs)
@@ -104,40 +118,36 @@ else()
     add_ros_executable(odom_to_tf src/odom_to_tf.cpp rclcpp geometry_msgs nav_msgs tf2_ros)
     add_ros_executable(scan_to_chassis src/scan_to_chassis.cpp rclcpp sensor_msgs)
     add_ros_executable(simple_mapper src/simple_mapper.cpp rclcpp nav_msgs sensor_msgs)
+
+    add_executable(web_server website/src/main.cc)
+    target_link_libraries(web_server
+        Drogon::Drogon
+        FFmpeg::avcodec
+        FFmpeg::avutil
+        FFmpeg::swscale
+        LibDataChannel::LibDataChannel
+        ${OpenCV_LIBS})
+    target_include_directories(web_server
+        PRIVATE
+            ${OpenCV_INCLUDE_DIRS})
+    ament_target_dependencies(web_server
+        rclcpp
+        geometry_msgs
+        sensor_msgs)
+    target_compile_definitions(web_server
+        PRIVATE
+            AEROSENTINEL_VERSION="${PROJECT_VERSION}")
+    set_target_properties(web_server
+        PROPERTIES
+            BUILD_RPATH "$ORIGIN/lib;$ORIGIN"
+            INSTALL_RPATH "$ORIGIN/lib;$ORIGIN")
+    add_custom_command(TARGET web_server POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/website/public"
+            "$<TARGET_FILE_DIR:web_server>/public")
+    install(TARGETS web_server
+        RUNTIME DESTINATION lib/${PROJECT_NAME})
 endif()
-
-find_package(Drogon CONFIG REQUIRED)
-find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
-find_package(LibDataChannel CONFIG REQUIRED)
-find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
-find_package(rclcpp REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
-
-add_executable(web_server website/src/main.cc)
-target_link_libraries(web_server
-    Drogon::Drogon
-    FFmpeg::avcodec
-    FFmpeg::avutil
-    FFmpeg::swscale
-    LibDataChannel::LibDataChannel
-    ${OpenCV_LIBS})
-target_include_directories(web_server
-    PRIVATE
-        ${OpenCV_INCLUDE_DIRS})
-ament_target_dependencies(web_server
-    rclcpp
-    geometry_msgs
-    sensor_msgs)
-target_compile_definitions(web_server
-    PRIVATE
-        AEROSENTINEL_VERSION="${PROJECT_VERSION}")
-add_custom_command(TARGET web_server POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/website/public"
-        "$<TARGET_FILE_DIR:web_server>/public")
-install(TARGETS web_server
-    RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 install(FILES
     README.md
