@@ -21,6 +21,7 @@ if(NOT ament_cmake_FOUND)
         "Ubuntu 26.04 and source /opt/ros/lyrical/setup.bash before running "
         "colcon build.")
 endif()
+find_package(ament_cmake_target_dependencies REQUIRED)
 
 option(
     ROS_TEST_BUILD_NAV2_EXPLORER
