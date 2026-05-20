@@ -3,13 +3,7 @@ name: CodeQL
 on:
   push:
     branches:
-      - ak/ros2
-  pull_request:
-    branches:
-      - ak/ros2
-  schedule:
-    - cron: "23 4 * * 1"
-  workflow_dispatch:
+      - ros_simulation
 
 permissions:
   actions: read

@@ -3,23 +3,7 @@ name: AeroSentinel Linux Binaries
 on:
   push:
     branches:
-      - ak/ros2
-    paths:
-      - ".github/workflows/**"
-      - "CMakeLists.txt"
-      - "package.xml"
-      - "src/**"
-      - "website/**"
-  pull_request:
-    branches:
-      - ak/ros2
-    paths:
-      - ".github/workflows/**"
-      - "CMakeLists.txt"
-      - "package.xml"
-      - "src/**"
-      - "website/**"
-  workflow_dispatch:
+      - ros_simulation
 
 permissions:
   contents: write
@@ -30,7 +14,7 @@ concurrency:
 
 env:
   BUILD_TYPE: RelWithDebInfo
-  PUBLISH_BRANCH: ak/ros2
+  PUBLISH_BRANCH: ros_simulation
   ROS_DISTRO: lyrical
 
 jobs:
@@ -52,8 +36,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && env.PUBLISH_BRANCH || github.ref }}
 
       - name: Set up ROS apt source
         shell: bash
@@ -263,7 +245,7 @@ jobs:
   publish:
     name: Publish binaries to repository
     needs: build
-    if: github.event_name != 'pull_request' && github.ref_type == 'branch'
+    if: github.ref == 'refs/heads/ros_simulation'
     runs-on: ubuntu-latest
 
     steps:

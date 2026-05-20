@@ -3,11 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - ak/ros2
-  pull_request:
-    branches:
-      - ak/ros2
-  workflow_dispatch:
+      - ros_simulation
 
 permissions:
   contents: read
