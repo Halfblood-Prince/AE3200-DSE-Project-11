@@ -113,8 +113,10 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
     if(NOT EXISTS "${ROS_TEST_PREBUILT_MANIFEST}")
         message(FATAL_ERROR
             "Missing prebuilt bundle metadata: ${ROS_TEST_PREBUILT_MANIFEST}. "
-            "Regenerate the binary bundle with the Lyrical Ubuntu 26.04 workflow or "
-            "configure with -DROS_TEST_USE_PREBUILT_BINARIES=OFF to build from source.")
+            "Push to ros_simulation, wait for the AeroSentinel Linux Binaries "
+            "workflow to publish bin/${ROS_TEST_BIN_ARCH}/build-info.env, and "
+            "pull that commit. Maintainers can configure with "
+            "-DROS_TEST_USE_PREBUILT_BINARIES=OFF to build from source.")
     endif()
     require_prebuilt_metadata("ROS_DISTRO" "${ROS_TEST_TARGET_ROS_DISTRO}")
     require_prebuilt_metadata("UBUNTU_CODENAME" "${ROS_TEST_TARGET_UBUNTU_CODENAME}")

@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - ros_simulation
+    paths-ignore:
+      - "bin/**"
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -16,6 +19,7 @@ env:
   BUILD_TYPE: RelWithDebInfo
   PUBLISH_BRANCH: ros_simulation
   ROS_DISTRO: lyrical
+  TARGET_UBUNTU_CODENAME: resolute
 
 jobs:
   build:
@@ -40,18 +44,25 @@ jobs:
       - name: Set up ROS apt source
         shell: bash
         run: |
+          set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y ca-certificates curl software-properties-common
           add-apt-repository -y universe
+          ubuntu_codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")"
+          if [ "${ubuntu_codename}" != "${TARGET_UBUNTU_CODENAME}" ]; then
+            echo "Expected Ubuntu codename ${TARGET_UBUNTU_CODENAME}, got ${ubuntu_codename}."
+            exit 1
+          fi
           ROS_APT_SOURCE_VERSION="$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')"
           curl -L -o /tmp/ros2-testing-apt-source.deb \
-            "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")_all.deb"
+            "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.${ubuntu_codename}_all.deb"
           dpkg -i /tmp/ros2-testing-apt-source.deb
 
       - name: Install package dependencies
         shell: bash
         run: |
+          set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y \
@@ -90,6 +101,7 @@ jobs:
       - name: Install libdatachannel
         shell: bash
         run: |
+          set -euo pipefail
           git clone --depth 1 --branch v0.22.6 --recursive --shallow-submodules \
             https://github.com/paullouisageneau/libdatachannel.git \
             "${RUNNER_TEMP}/libdatachannel"
@@ -106,6 +118,7 @@ jobs:
       - name: Verify CMake packages
         shell: bash
         run: |
+          set -euo pipefail
           cat > "${RUNNER_TEMP}/CMakeLists.txt" <<'EOF'
           cmake_minimum_required(VERSION 3.21)
           project(dependency_probe LANGUAGES CXX)
@@ -119,6 +132,7 @@ jobs:
       - name: Build ROS 2 package from source
         shell: bash
         run: |
+          set -euo pipefail
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
           multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
           mysql_include_dir="$(mysql_config --variable=pkgincludedir 2>/dev/null || true)"
@@ -135,6 +149,12 @@ jobs:
             hiredis_include_dir="/usr/include"
           fi
           hiredis_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 -name 'libhiredis.so' -print -quit)"
+          for required_var in mysql_include_dir mysql_lib_dir mysql_library hiredis_include_dir hiredis_library; do
+            if [ -z "${!required_var}" ]; then
+              echo "Unable to resolve ${required_var}."
+              exit 1
+            fi
+          done
           echo "mysql_include_dir=${mysql_include_dir}"
           echo "mysql_lib_dir=${mysql_lib_dir}"
           echo "mysql_library=${mysql_library}"
@@ -170,32 +190,41 @@ jobs:
       - name: Clear and populate binary folder
         shell: bash
         run: |
+          set -euo pipefail
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
           ubuntu_codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")"
           ubuntu_version_id="$(. /etc/os-release && echo "${VERSION_ID}")"
+          if [ "${ubuntu_codename}" != "${TARGET_UBUNTU_CODENAME}" ]; then
+            echo "Expected Ubuntu codename ${TARGET_UBUNTU_CODENAME}, got ${ubuntu_codename}."
+            exit 1
+          fi
           case "${package_dir}" in
             "${GITHUB_WORKSPACE}/bin/"*) ;;
             *) echo "Refusing to clean unexpected package_dir=${package_dir}"; exit 1 ;;
           esac
           mkdir -p "${package_dir}"
           find "${package_dir}" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf -- {} +
-          for executable in \
-            auto_drive \
-            map_filter \
-            map_monitor \
-            odom_to_tf \
-            scan_to_chassis \
-            simple_mapper \
+          required_executables=(
+            auto_drive
+            map_filter
+            map_monitor
+            odom_to_tf
+            scan_to_chassis
+            simple_mapper
             web_server
-          do
+          )
+          for executable in "${required_executables[@]}"; do
             cp "${RUNNER_TEMP}/ros_ws/install/ros_test/lib/ros_test/${executable}" "${package_dir}/"
             chmod +x "${package_dir}/${executable}"
           done
           {
+            echo "BIN_ARCH=${{ matrix.bin_dir }}"
+            echo "SOURCE_COMMIT=${GITHUB_SHA}"
             echo "ROS_DISTRO=${ROS_DISTRO}"
             echo "UBUNTU_CODENAME=${ubuntu_codename}"
             echo "UBUNTU_VERSION_ID=${ubuntu_version_id}"
+            echo "BUILD_TYPE=${BUILD_TYPE}"
           } > "${package_dir}/build-info.env"
           patchelf --set-rpath '$ORIGIN/lib:$ORIGIN' "${package_dir}/web_server"
 
@@ -237,6 +266,63 @@ jobs:
             exit 1
           fi
 
+      - name: Verify generated client bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "/opt/ros/${ROS_DISTRO}/setup.bash"
+          package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
+          required_executables=(
+            auto_drive
+            map_filter
+            map_monitor
+            odom_to_tf
+            scan_to_chassis
+            simple_mapper
+            web_server
+          )
+
+          for executable in "${required_executables[@]}"; do
+            test -x "${package_dir}/${executable}"
+          done
+          test -f "${package_dir}/build-info.env"
+          grep -qx "BIN_ARCH=${{ matrix.bin_dir }}" "${package_dir}/build-info.env"
+          grep -qx "ROS_DISTRO=${ROS_DISTRO}" "${package_dir}/build-info.env"
+          grep -qx "UBUNTU_CODENAME=${TARGET_UBUNTU_CODENAME}" "${package_dir}/build-info.env"
+          test -d "${package_dir}/lib"
+          find "${package_dir}/lib" -type f -name "*.so*" -print -quit | grep -q .
+
+          mkdir -p "${RUNNER_TEMP}/client_ws/src"
+          ln -s "${GITHUB_WORKSPACE}" "${RUNNER_TEMP}/client_ws/src/ros_test"
+          cd "${RUNNER_TEMP}/client_ws"
+          colcon build \
+            --packages-select ros_test \
+            --event-handlers console_direct+
+
+          install_dir="${RUNNER_TEMP}/client_ws/install/ros_test/lib/ros_test"
+          for executable in "${required_executables[@]}"; do
+            test -x "${install_dir}/${executable}"
+            cmp "${package_dir}/${executable}" "${install_dir}/${executable}"
+          done
+          test -d "${install_dir}/lib"
+          find "${install_dir}/lib" -type f -name "*.so*" -print -quit | grep -q .
+          ldd "${install_dir}/web_server" > "${RUNNER_TEMP}/client_web_server.ldd"
+          if grep -q "not found" "${RUNNER_TEMP}/client_web_server.ldd"; then
+            cat "${RUNNER_TEMP}/client_web_server.ldd"
+            exit 1
+          fi
+
+      - name: Show client build logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          log_dir="${RUNNER_TEMP}/client_ws/log/latest_build/ros_test"
+          if [ -d "${log_dir}" ]; then
+            find "${log_dir}" -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+          else
+            echo "No client ros_test colcon log directory found at ${log_dir}"
+          fi
+
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
@@ -259,6 +345,7 @@ jobs:
       - name: Clear repository binary folders
         shell: bash
         run: |
+          set -euo pipefail
           for package_dir in \
             "${GITHUB_WORKSPACE}/bin/amd_x64" \
             "${GITHUB_WORKSPACE}/bin/arm_x64"
@@ -283,9 +370,39 @@ jobs:
           name: ros_test-arm_x64
           path: bin/arm_x64
 
+      - name: Verify downloaded binary bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_executables=(
+            auto_drive
+            map_filter
+            map_monitor
+            odom_to_tf
+            scan_to_chassis
+            simple_mapper
+            web_server
+          )
+
+          for package_dir in bin/amd_x64 bin/arm_x64; do
+            bin_arch="$(basename "${package_dir}")"
+            test -f "${package_dir}/build-info.env"
+            grep -qx "BIN_ARCH=${bin_arch}" "${package_dir}/build-info.env"
+            grep -qx "ROS_DISTRO=${ROS_DISTRO}" "${package_dir}/build-info.env"
+            grep -qx "UBUNTU_CODENAME=${TARGET_UBUNTU_CODENAME}" "${package_dir}/build-info.env"
+            test -d "${package_dir}/lib"
+            find "${package_dir}/lib" -type f -name "*.so*" -print -quit | grep -q .
+            for executable in "${required_executables[@]}"; do
+              chmod +x "${package_dir}/${executable}"
+              test -x "${package_dir}/${executable}"
+            done
+            chmod 0644 "${package_dir}/build-info.env"
+          done
+
       - name: Commit binaries
         shell: bash
         run: |
+          set -euo pipefail
           for package_dir in bin/amd_x64 bin/arm_x64; do
             chmod +x \
               "${package_dir}/auto_drive" \
@@ -299,11 +416,10 @@ jobs:
           done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bin/amd_x64/.gitignore bin/arm_x64/.gitignore
-          git add -f bin/amd_x64 bin/arm_x64
+          git add -A -f bin/amd_x64 bin/arm_x64
           if git diff --cached --quiet; then
             echo "No binary changes to commit."
             exit 0
           fi
-          git commit -m "Update Linux binary artifacts"
+          git commit -m "Update Linux binary artifacts [skip ci]"
           git push origin HEAD:${PUBLISH_BRANCH}
