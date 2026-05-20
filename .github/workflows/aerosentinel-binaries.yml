@@ -74,6 +74,7 @@ jobs:
             libssl-dev \
             libswscale-dev \
             libx264-dev \
+            libyaml-cpp-dev \
             patchelf \
             pkg-config \
             uuid-dev \
