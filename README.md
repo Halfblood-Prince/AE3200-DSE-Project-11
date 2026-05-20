@@ -1,34 +1,47 @@
-# ROS 2 Jazzy Gazebo Lidar SLAM Simulation
+# ROS 2 Lyrical Gazebo Lidar SLAM Simulation
 
-This package launches a Gazebo Harmonic simulation of a differential-drive lidar robot inside a large perimeter-bounded space with sparse SLAM landmarks, bridges the simulated sensor data into ROS 2, runs `slam_toolbox`, and opens RViz.
+This package launches a Gazebo Jetty simulation of a differential-drive lidar robot inside a large perimeter-bounded space with sparse SLAM landmarks, bridges the simulated sensor data into ROS 2, runs `slam_toolbox`, and opens RViz.
 
 ## Install dependencies
 
+On Ubuntu 26.04, enable the ROS 2 Lyrical apt source first if it is not already configured:
+
 ```bash
 sudo apt update
-sudo apt install python3-colcon-common-extensions ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-rclcpp-action ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs ros-jazzy-nav2-bringup ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-ros-gz-sim ros-jazzy-rviz2 ros-jazzy-slam-toolbox ros-jazzy-tf2 ros-jazzy-tf2-ros
+sudo apt install -y curl software-properties-common
+sudo add-apt-repository universe
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')
+curl -L -o /tmp/ros2-testing-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-testing-apt-source.deb
 ```
 
-The default build installs shipped binaries from `bin/<arch>`, including the
+```bash
+sudo apt update
+sudo apt install python3-colcon-common-extensions ros-lyrical-ament-cmake ros-lyrical-rclcpp ros-lyrical-rclcpp-action ros-lyrical-geometry-msgs ros-lyrical-sensor-msgs ros-lyrical-nav-msgs ros-lyrical-nav2-msgs ros-lyrical-nav2-bringup ros-lyrical-ros-gz ros-lyrical-ros-gz-bridge ros-lyrical-ros-gz-sim ros-lyrical-rviz2 ros-lyrical-slam-toolbox ros-lyrical-tf2 ros-lyrical-tf2-ros
+```
+
+The default build installs shipped binaries from `bin/<arch>` when the bundle
+metadata confirms it was built for ROS 2 Lyrical on Ubuntu 26.04, including the
 AeroSentinel web server and its bundled Drogon/FFmpeg/libdatachannel/OpenCV
 runtime libraries. You do not need to install those web development packages for
-a normal `colcon build`.
+a normal `colcon build` once the Lyrical binary workflow has republished the
+bundle.
 
 ## Build
 
-Clone into a ROS 2 workspace, source Jazzy, then build from the workspace root:
+Clone into a ROS 2 workspace, source Lyrical, then build from the workspace root:
 
 ```bash
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 git clone --branch ak/ros2 https://github.com/halfblood-prince/ae3200-dse-project-11.git
 cd ~/ros2_ws
-source /opt/ros/jazzy/setup.bash
+source /opt/ros/lyrical/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-If `source /opt/ros/jazzy/setup.bash` fails, install ROS 2 Jazzy and the
+If `source /opt/ros/lyrical/setup.bash` fails, install ROS 2 Lyrical and the
 dependencies listed above first. The prebuilt binaries in `bin/` avoid compiling
 the ROS node executables and the web server, but `colcon build` still needs the
 ROS 2 `ament_cmake` environment to install the package.
@@ -36,8 +49,8 @@ ROS 2 `ament_cmake` environment to install the package.
 The ROS nodes and the AeroSentinel web server are C++ executables. By default,
 CMake installs the complete prebuilt bundle for the current CPU in `bin/amd_x64`
 or `bin/arm_x64`. If that bundle is incomplete, configuration fails with a
-missing-binary message instead of compiling Drogon or its dependencies on the
-host. Maintainers can explicitly rebuild from source with
+missing-binary or stale-binary message instead of installing executables built
+for another ROS/Ubuntu target. Maintainers can explicitly rebuild from source with
 `colcon build --cmake-args -DROS_TEST_USE_PREBUILT_BINARIES=OFF` after installing
 the native development dependencies used by the binary workflow.
 
@@ -64,7 +77,9 @@ but a normal clone does not require manually extracting them.
 Each folder must contain the complete prebuilt executable set:
 `auto_drive`, `map_filter`, `map_monitor`, `nav2_waypoint_explorer`,
 `odom_to_tf`, `scan_to_chassis`, `simple_mapper`, and `web_server`, plus a
-`lib/` directory containing the shared libraries needed by `web_server`.
+`lib/` directory containing the shared libraries needed by `web_server`, and a
+`build-info.env` file with `ROS_DISTRO=lyrical` and
+`UBUNTU_CODENAME=resolute`.
 
 ## Launch
 
@@ -78,7 +93,7 @@ The launch also starts the AeroSentinel C++ dashboard at `http://127.0.0.1:8080/
 
 The launch starts:
 
-- Gazebo Harmonic world: `robot.sdf` with an outer perimeter and sparse non-wall landmarks
+- Gazebo Jetty world: `robot.sdf` with an outer perimeter and sparse non-wall landmarks
 - Gazebo Teleop GUI panel
 - ROS-Gazebo bridge for `/clock`, `/scan_raw`, `/front_camera/image`, `/imu`, `/odom`, and ROS `/cmd_vel`
 - 1920x1080 front camera mounted on the robot chassis at 60 FPS

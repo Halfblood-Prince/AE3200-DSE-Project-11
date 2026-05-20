@@ -2,20 +2,24 @@ cmake_minimum_required(VERSION 3.21)
 
 project(ros_test
     VERSION 0.1.0
-    DESCRIPTION "Gazebo Harmonic lidar robot simulation with ROS 2 Jazzy SLAM Toolbox mapping"
+    DESCRIPTION "Gazebo Jetty lidar robot simulation with ROS 2 Lyrical SLAM Toolbox mapping"
     LANGUAGES NONE)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/website/cmake")
 
+set(ROS_TEST_TARGET_ROS_DISTRO "lyrical")
+set(ROS_TEST_TARGET_UBUNTU_CODENAME "resolute")
+
 find_package(ament_cmake QUIET)
 if(NOT ament_cmake_FOUND)
     message(FATAL_ERROR
-        "ament_cmake was not found. Install ROS 2 Jazzy dependencies and source "
-        "/opt/ros/jazzy/setup.bash before running colcon build.")
+        "ament_cmake was not found. Install ROS 2 Lyrical dependencies on "
+        "Ubuntu 26.04 and source /opt/ros/lyrical/setup.bash before running "
+        "colcon build.")
 endif()
 
 set(ROS_TEST_PREBUILT_EXECUTABLES
@@ -38,6 +42,7 @@ endif()
 
 set(ROS_TEST_PREBUILT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bin/${ROS_TEST_BIN_ARCH}")
 set(ROS_TEST_PREBUILT_LIB_DIR "${ROS_TEST_PREBUILT_DIR}/lib")
+set(ROS_TEST_PREBUILT_MANIFEST "${ROS_TEST_PREBUILT_DIR}/build-info.env")
 
 option(
     ROS_TEST_USE_PREBUILT_BINARIES
@@ -51,6 +56,22 @@ function(add_ros_executable target source)
         RUNTIME DESTINATION lib/${PROJECT_NAME})
 endfunction()
 
+function(require_prebuilt_metadata key expected)
+    file(STRINGS "${ROS_TEST_PREBUILT_MANIFEST}" matches REGEX "^${key}=")
+    if(NOT matches)
+        message(FATAL_ERROR "Prebuilt bundle metadata ${key} is missing from ${ROS_TEST_PREBUILT_MANIFEST}")
+    endif()
+
+    list(GET matches 0 metadata_line)
+    string(REGEX REPLACE "^${key}=(.*)$" "\\1" actual "${metadata_line}")
+    if(NOT actual STREQUAL expected)
+        message(FATAL_ERROR
+            "Prebuilt bundle metadata ${key}=${actual}, expected ${expected}. "
+            "Regenerate bin/${ROS_TEST_BIN_ARCH} for ROS 2 ${ROS_TEST_TARGET_ROS_DISTRO} "
+            "on Ubuntu ${ROS_TEST_TARGET_UBUNTU_CODENAME}.")
+    endif()
+endfunction()
+
 if(ROS_TEST_USE_PREBUILT_BINARIES)
     if(NOT ROS_TEST_BIN_ARCH)
         message(FATAL_ERROR "No prebuilt binary folder is defined for CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
@@ -61,6 +82,15 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
             message(FATAL_ERROR "Missing prebuilt executable: ${ROS_TEST_PREBUILT_DIR}/${executable}")
         endif()
     endforeach()
+
+    if(NOT EXISTS "${ROS_TEST_PREBUILT_MANIFEST}")
+        message(FATAL_ERROR
+            "Missing prebuilt bundle metadata: ${ROS_TEST_PREBUILT_MANIFEST}. "
+            "Regenerate the binary bundle with the Lyrical Ubuntu 26.04 workflow or "
+            "configure with -DROS_TEST_USE_PREBUILT_BINARIES=OFF to build from source.")
+    endif()
+    require_prebuilt_metadata("ROS_DISTRO" "${ROS_TEST_TARGET_ROS_DISTRO}")
+    require_prebuilt_metadata("UBUNTU_CODENAME" "${ROS_TEST_TARGET_UBUNTU_CODENAME}")
 
     if(NOT IS_DIRECTORY "${ROS_TEST_PREBUILT_LIB_DIR}")
         message(FATAL_ERROR "Missing prebuilt dependency bundle: ${ROS_TEST_PREBUILT_LIB_DIR}")

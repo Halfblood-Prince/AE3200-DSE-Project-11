@@ -31,15 +31,18 @@ concurrency:
 env:
   BUILD_TYPE: RelWithDebInfo
   PUBLISH_BRANCH: ak/ros2
-  ROS_DISTRO: jazzy
+  ROS_DISTRO: lyrical
 
 jobs:
   build:
-    name: Build Linux ${{ matrix.bin_dir }}
+    name: Build Ubuntu 26.04 ${{ matrix.bin_dir }}
     runs-on: ${{ matrix.runner }}
+    container:
+      image: ubuntu:26.04
     strategy:
       fail-fast: false
       matrix:
+        # The host runner supplies CPU architecture; the job container supplies Ubuntu 26.04.
         include:
           - bin_dir: amd_x64
             runner: ubuntu-24.04
@@ -52,16 +55,27 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && env.PUBLISH_BRANCH || github.ref }}
 
-      - name: Set up ROS
-        uses: ros-tooling/setup-ros@v0.7
-        with:
-          required-ros-distributions: ${{ env.ROS_DISTRO }}
+      - name: Set up ROS apt source
+        shell: bash
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl software-properties-common
+          add-apt-repository -y universe
+          ROS_APT_SOURCE_VERSION="$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')"
+          curl -L -o /tmp/ros2-testing-apt-source.deb \
+            "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")_all.deb"
+          dpkg -i /tmp/ros2-testing-apt-source.deb
 
       - name: Install package dependencies
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            cmake \
+            git \
             dpkg-dev \
             libc-ares-dev \
             libavcodec-dev \
@@ -105,8 +119,8 @@ jobs:
             -DNO_EXAMPLES=ON \
             -DNO_TESTS=ON
           cmake --build "${RUNNER_TEMP}/libdatachannel_build" --parallel
-          sudo cmake --install "${RUNNER_TEMP}/libdatachannel_build"
-          sudo ldconfig
+          cmake --install "${RUNNER_TEMP}/libdatachannel_build"
+          ldconfig
 
       - name: Verify CMake packages
         shell: bash
@@ -177,6 +191,8 @@ jobs:
         run: |
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
+          ubuntu_codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")"
+          ubuntu_version_id="$(. /etc/os-release && echo "${VERSION_ID}")"
           case "${package_dir}" in
             "${GITHUB_WORKSPACE}/bin/"*) ;;
             *) echo "Refusing to clean unexpected package_dir=${package_dir}"; exit 1 ;;
@@ -196,6 +212,11 @@ jobs:
             cp "${RUNNER_TEMP}/ros_ws/install/ros_test/lib/ros_test/${executable}" "${package_dir}/"
             chmod +x "${package_dir}/${executable}"
           done
+          {
+            echo "ROS_DISTRO=${ROS_DISTRO}"
+            echo "UBUNTU_CODENAME=${ubuntu_codename}"
+            echo "UBUNTU_VERSION_ID=${ubuntu_version_id}"
+          } > "${package_dir}/build-info.env"
           patchelf --set-rpath '$ORIGIN/lib:$ORIGIN' "${package_dir}/web_server"
 
           mkdir -p "${package_dir}/lib"
@@ -285,7 +306,18 @@ jobs:
       - name: Commit binaries
         shell: bash
         run: |
-          find bin/amd_x64 bin/arm_x64 -maxdepth 1 -type f ! -name .gitignore -exec chmod +x {} +
+          for package_dir in bin/amd_x64 bin/arm_x64; do
+            chmod +x \
+              "${package_dir}/auto_drive" \
+              "${package_dir}/map_filter" \
+              "${package_dir}/map_monitor" \
+              "${package_dir}/nav2_waypoint_explorer" \
+              "${package_dir}/odom_to_tf" \
+              "${package_dir}/scan_to_chassis" \
+              "${package_dir}/simple_mapper" \
+              "${package_dir}/web_server"
+            chmod 0644 "${package_dir}/build-info.env"
+          done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add bin/amd_x64/.gitignore bin/arm_x64/.gitignore
