@@ -5,19 +5,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-version: 2
-updates:
+    target-branch: "sensitivity_analysis"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "github-actions"
-    commit-message:
-      prefix: "chore"
+    target-branch: "sensitivity_analysis"
