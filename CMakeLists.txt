@@ -22,6 +22,9 @@ if(NOT ament_cmake_FOUND)
         "colcon build.")
 endif()
 find_package(ament_cmake_target_dependencies REQUIRED)
+if(NOT COMMAND ament_target_dependencies)
+    include("${ament_cmake_target_dependencies_DIR}/ament_target_dependencies.cmake")
+endif()
 
 option(
     ROS_TEST_BUILD_NAV2_EXPLORER
