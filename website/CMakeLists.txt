@@ -20,6 +20,23 @@ find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
 
+function(aerosentinel_target_dependencies target)
+    foreach(dependency IN LISTS ARGN)
+        if(TARGET "${dependency}::${dependency}")
+            target_link_libraries(${target} PRIVATE "${dependency}::${dependency}")
+        elseif(DEFINED ${dependency}_TARGETS)
+            target_link_libraries(${target} PRIVATE ${${dependency}_TARGETS})
+        elseif(DEFINED ${dependency}_LIBRARIES)
+            target_link_libraries(${target} PRIVATE ${${dependency}_LIBRARIES})
+            if(DEFINED ${dependency}_INCLUDE_DIRS)
+                target_include_directories(${target} PRIVATE ${${dependency}_INCLUDE_DIRS})
+            endif()
+        else()
+            message(FATAL_ERROR "No CMake target or library variable found for dependency ${dependency}")
+        endif()
+    endforeach()
+endfunction()
+
 add_executable(aerosentinel-control
     src/main.cc)
 
@@ -36,7 +53,7 @@ target_include_directories(aerosentinel-control
     PRIVATE
         ${OpenCV_INCLUDE_DIRS})
 
-ament_target_dependencies(aerosentinel-control
+aerosentinel_target_dependencies(aerosentinel-control
     rclcpp
     geometry_msgs
     sensor_msgs)

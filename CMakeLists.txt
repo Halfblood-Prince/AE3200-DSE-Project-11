@@ -21,10 +21,6 @@ if(NOT ament_cmake_FOUND)
         "Ubuntu 26.04 and source /opt/ros/lyrical/setup.bash before running "
         "colcon build.")
 endif()
-find_package(ament_cmake_target_dependencies REQUIRED)
-if(NOT COMMAND ament_target_dependencies)
-    include("${ament_cmake_target_dependencies_DIR}/ament_target_dependencies.cmake")
-endif()
 
 option(
     ROS_TEST_BUILD_NAV2_EXPLORER
@@ -61,9 +57,26 @@ option(
     "Install shipped executables and dependency libraries from bin/<arch> instead of compiling package code"
     ON)
 
+function(ros_test_target_dependencies target)
+    foreach(dependency IN LISTS ARGN)
+        if(TARGET "${dependency}::${dependency}")
+            target_link_libraries(${target} PRIVATE "${dependency}::${dependency}")
+        elseif(DEFINED ${dependency}_TARGETS)
+            target_link_libraries(${target} PRIVATE ${${dependency}_TARGETS})
+        elseif(DEFINED ${dependency}_LIBRARIES)
+            target_link_libraries(${target} PRIVATE ${${dependency}_LIBRARIES})
+            if(DEFINED ${dependency}_INCLUDE_DIRS)
+                target_include_directories(${target} PRIVATE ${${dependency}_INCLUDE_DIRS})
+            endif()
+        else()
+            message(FATAL_ERROR "No CMake target or library variable found for dependency ${dependency}")
+        endif()
+    endforeach()
+endfunction()
+
 function(add_ros_executable target source)
     add_executable(${target} ${source})
-    ament_target_dependencies(${target} ${ARGN})
+    ros_test_target_dependencies(${target} ${ARGN})
     install(TARGETS ${target}
         RUNTIME DESTINATION lib/${PROJECT_NAME})
 endfunction()
@@ -170,7 +183,7 @@ else()
     target_include_directories(web_server
         PRIVATE
             ${OpenCV_INCLUDE_DIRS})
-    ament_target_dependencies(web_server
+    ros_test_target_dependencies(web_server
         rclcpp
         geometry_msgs
         sensor_msgs)
