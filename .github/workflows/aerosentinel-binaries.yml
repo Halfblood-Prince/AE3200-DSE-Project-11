@@ -133,7 +133,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +u
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
+          set -u
           multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
           mysql_include_dir="$(mysql_config --variable=pkgincludedir 2>/dev/null || true)"
           if [ -z "${mysql_include_dir}" ]; then
@@ -191,7 +193,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +u
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
+          set -u
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
           ubuntu_codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")"
           ubuntu_version_id="$(. /etc/os-release && echo "${VERSION_ID}")"
@@ -270,7 +274,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +u
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
+          set -u
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
           required_executables=(
             auto_drive
