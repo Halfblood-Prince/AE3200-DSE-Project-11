@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(ros_test
     VERSION 0.1.0
-    DESCRIPTION "Gazebo Jetty lidar robot simulation with ROS 2 Lyrical SLAM Toolbox mapping"
+    DESCRIPTION "Gazebo Jetty lidar robot simulation with ROS 2 Lyrical mapping"
     LANGUAGES NONE)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -22,15 +22,23 @@ if(NOT ament_cmake_FOUND)
         "colcon build.")
 endif()
 
+option(
+    ROS_TEST_BUILD_NAV2_EXPLORER
+    "Build/install the optional Nav2 waypoint explorer; requires Nav2 packages to be available"
+    OFF)
+
 set(ROS_TEST_PREBUILT_EXECUTABLES
     auto_drive
     map_filter
     map_monitor
-    nav2_waypoint_explorer
     odom_to_tf
     scan_to_chassis
     simple_mapper
     web_server)
+
+if(ROS_TEST_BUILD_NAV2_EXPLORER)
+    list(APPEND ROS_TEST_PREBUILT_EXECUTABLES nav2_waypoint_explorer)
+endif()
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ROS_TEST_SYSTEM_PROCESSOR)
 set(ROS_TEST_BIN_ARCH "")
@@ -77,10 +85,12 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         message(FATAL_ERROR "No prebuilt binary folder is defined for CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
+    set(ROS_TEST_PREBUILT_PROGRAMS "")
     foreach(executable IN LISTS ROS_TEST_PREBUILT_EXECUTABLES)
         if(NOT EXISTS "${ROS_TEST_PREBUILT_DIR}/${executable}")
             message(FATAL_ERROR "Missing prebuilt executable: ${ROS_TEST_PREBUILT_DIR}/${executable}")
         endif()
+        list(APPEND ROS_TEST_PREBUILT_PROGRAMS "${ROS_TEST_PREBUILT_DIR}/${executable}")
     endforeach()
 
     if(NOT EXISTS "${ROS_TEST_PREBUILT_MANIFEST}")
@@ -104,14 +114,7 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
 
     message(STATUS "Installing prebuilt ros_test executables and dependency bundle from ${ROS_TEST_PREBUILT_DIR}")
     install(PROGRAMS
-        ${ROS_TEST_PREBUILT_DIR}/auto_drive
-        ${ROS_TEST_PREBUILT_DIR}/map_filter
-        ${ROS_TEST_PREBUILT_DIR}/map_monitor
-        ${ROS_TEST_PREBUILT_DIR}/nav2_waypoint_explorer
-        ${ROS_TEST_PREBUILT_DIR}/odom_to_tf
-        ${ROS_TEST_PREBUILT_DIR}/scan_to_chassis
-        ${ROS_TEST_PREBUILT_DIR}/simple_mapper
-        ${ROS_TEST_PREBUILT_DIR}/web_server
+        ${ROS_TEST_PREBUILT_PROGRAMS}
         DESTINATION lib/${PROJECT_NAME})
     install(DIRECTORY "${ROS_TEST_PREBUILT_LIB_DIR}/"
         DESTINATION lib/${PROJECT_NAME}/lib
@@ -121,12 +124,9 @@ else()
     enable_language(CXX)
 
     find_package(geometry_msgs REQUIRED)
-    find_package(nav2_msgs REQUIRED)
     find_package(nav_msgs REQUIRED)
     find_package(rclcpp REQUIRED)
-    find_package(rclcpp_action REQUIRED)
     find_package(sensor_msgs REQUIRED)
-    find_package(tf2 REQUIRED)
     find_package(tf2_ros REQUIRED)
     find_package(Drogon CONFIG REQUIRED)
     find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
@@ -136,18 +136,24 @@ else()
     add_ros_executable(auto_drive src/auto_drive.cpp rclcpp geometry_msgs sensor_msgs)
     add_ros_executable(map_filter src/map_filter.cpp rclcpp nav_msgs)
     add_ros_executable(map_monitor src/map_monitor.cpp rclcpp nav_msgs)
-    add_ros_executable(nav2_waypoint_explorer
-        src/nav2_waypoint_explorer.cpp
-        rclcpp
-        rclcpp_action
-        geometry_msgs
-        nav2_msgs
-        nav_msgs
-        tf2
-        tf2_ros)
     add_ros_executable(odom_to_tf src/odom_to_tf.cpp rclcpp geometry_msgs nav_msgs tf2_ros)
     add_ros_executable(scan_to_chassis src/scan_to_chassis.cpp rclcpp sensor_msgs)
     add_ros_executable(simple_mapper src/simple_mapper.cpp rclcpp nav_msgs sensor_msgs)
+
+    if(ROS_TEST_BUILD_NAV2_EXPLORER)
+        find_package(nav2_msgs REQUIRED)
+        find_package(rclcpp_action REQUIRED)
+        find_package(tf2 REQUIRED)
+        add_ros_executable(nav2_waypoint_explorer
+            src/nav2_waypoint_explorer.cpp
+            rclcpp
+            rclcpp_action
+            geometry_msgs
+            nav2_msgs
+            nav_msgs
+            tf2
+            tf2_ros)
+    endif()
 
     add_executable(web_server website/src/main.cc)
     target_link_libraries(web_server

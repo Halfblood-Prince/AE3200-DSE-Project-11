@@ -100,11 +100,8 @@ jobs:
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
             ros-${ROS_DISTRO}-nav-msgs \
-            ros-${ROS_DISTRO}-nav2-msgs \
             ros-${ROS_DISTRO}-rclcpp \
-            ros-${ROS_DISTRO}-rclcpp-action \
             ros-${ROS_DISTRO}-sensor-msgs \
-            ros-${ROS_DISTRO}-tf2 \
             ros-${ROS_DISTRO}-tf2-ros
 
       - name: Install libdatachannel
@@ -203,7 +200,6 @@ jobs:
             auto_drive \
             map_filter \
             map_monitor \
-            nav2_waypoint_explorer \
             odom_to_tf \
             scan_to_chassis \
             simple_mapper \
@@ -311,7 +307,6 @@ jobs:
               "${package_dir}/auto_drive" \
               "${package_dir}/map_filter" \
               "${package_dir}/map_monitor" \
-              "${package_dir}/nav2_waypoint_explorer" \
               "${package_dir}/odom_to_tf" \
               "${package_dir}/scan_to_chassis" \
               "${package_dir}/simple_mapper" \

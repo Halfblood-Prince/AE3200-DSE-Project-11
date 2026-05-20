@@ -301,8 +301,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "mapper",
-                default_value="false",
-                description="Set true to use the simple odom mapper instead of slam_toolbox.",
+                default_value="true",
+                description="Set false to use slam_toolbox when it is installed.",
             ),
             DeclareLaunchArgument(
                 "nav2",

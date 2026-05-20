@@ -1,6 +1,6 @@
 # ROS 2 Lyrical Gazebo Lidar SLAM Simulation
 
-This package launches a Gazebo Jetty simulation of a differential-drive lidar robot inside a large perimeter-bounded space with sparse SLAM landmarks, bridges the simulated sensor data into ROS 2, runs `slam_toolbox`, and opens RViz.
+This package launches a Gazebo Jetty simulation of a differential-drive lidar robot inside a large perimeter-bounded space with sparse SLAM landmarks, bridges the simulated sensor data into ROS 2, runs the built-in mapper by default, and opens RViz.
 
 ## Install dependencies
 
@@ -17,8 +17,16 @@ sudo dpkg -i /tmp/ros2-testing-apt-source.deb
 
 ```bash
 sudo apt update
-sudo apt install python3-colcon-common-extensions ros-lyrical-ament-cmake ros-lyrical-rclcpp ros-lyrical-rclcpp-action ros-lyrical-geometry-msgs ros-lyrical-sensor-msgs ros-lyrical-nav-msgs ros-lyrical-nav2-msgs ros-lyrical-nav2-bringup ros-lyrical-ros-gz ros-lyrical-ros-gz-bridge ros-lyrical-ros-gz-sim ros-lyrical-rviz2 ros-lyrical-slam-toolbox ros-lyrical-tf2 ros-lyrical-tf2-ros
+sudo apt install python3-colcon-common-extensions ros-lyrical-ament-cmake ros-lyrical-rclcpp ros-lyrical-geometry-msgs ros-lyrical-sensor-msgs ros-lyrical-nav-msgs ros-lyrical-ros-gz ros-lyrical-ros-gz-bridge ros-lyrical-ros-gz-sim ros-lyrical-rviz2 ros-lyrical-tf2-ros
 ```
+
+As of May 20, 2026, the Lyrical apt repositories do not provide the Nav2 and
+SLAM Toolbox binary packages this project used on Jazzy/Kilted, including
+`ros-lyrical-nav2-msgs`, `ros-lyrical-nav2-bringup`, and
+`ros-lyrical-slam-toolbox`. The launch defaults therefore use the built-in
+simple mapper and keep Nav2 disabled. Once those packages are released for
+Lyrical, install them separately and use `mapper:=false`, `nav2:=true`, and
+`explore:=true` as needed.
 
 The default build installs shipped binaries from `bin/<arch>` when the bundle
 metadata confirms it was built for ROS 2 Lyrical on Ubuntu 26.04, including the
@@ -75,11 +83,13 @@ workflow artifacts are still uploaded to each Actions run for download/debugging
 but a normal clone does not require manually extracting them.
 
 Each folder must contain the complete prebuilt executable set:
-`auto_drive`, `map_filter`, `map_monitor`, `nav2_waypoint_explorer`,
-`odom_to_tf`, `scan_to_chassis`, `simple_mapper`, and `web_server`, plus a
-`lib/` directory containing the shared libraries needed by `web_server`, and a
-`build-info.env` file with `ROS_DISTRO=lyrical` and
-`UBUNTU_CODENAME=resolute`.
+`auto_drive`, `map_filter`, `map_monitor`, `odom_to_tf`, `scan_to_chassis`,
+`simple_mapper`, and `web_server`, plus a `lib/` directory containing the shared
+libraries needed by `web_server`, and a `build-info.env` file with
+`ROS_DISTRO=lyrical` and `UBUNTU_CODENAME=resolute`. The
+`nav2_waypoint_explorer` executable is optional and is built only when Nav2
+packages are available and CMake is configured with
+`-DROS_TEST_BUILD_NAV2_EXPLORER=ON`.
 
 ## Launch
 
@@ -100,17 +110,24 @@ The launch starts:
 - scan republisher from `/scan_raw` to `/scan` with frame `lidar_link`
 - static TF from `base_link` to `lidar_link`, matching the lidar pose in `robot.sdf`
 - `odom_to_tf`, publishing `odom -> base_link`
-- `slam_toolbox`, publishing `/map` from `/scan` and TF
+- built-in `simple_mapper`, publishing `/map` from odometry and scan data
 - `map_filter`, republishing only non-empty SLAM maps as `/map_valid`
 - RViz
 - `map_monitor`, which reports when `/map` is received
 - AeroSentinel C++ dashboard on port `8080`, displaying the front camera feed as a source-encoded H.264 WebRTC video track and publishing manual keyboard commands to `/cmd_vel`
 - Nav2 navigation servers, costmaps, behavior tree navigator, waypoint follower, and map saver only when `nav2:=true`
-- `nav2_waypoint_explorer` only when both `nav2:=true` and `explore:=true`
+- optional `nav2_waypoint_explorer` only when it has been built and both `nav2:=true` and `explore:=true`
 
 ## Manual and Fallback Modes
 
-Nav2 is disabled by default. To reattach the navigation stack:
+Nav2 and SLAM Toolbox are disabled by default on Lyrical until their binary
+packages are available. To use SLAM Toolbox after installing it:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py mapper:=false
+```
+
+To reattach the navigation stack after installing Nav2:
 
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py nav2:=true
@@ -128,7 +145,7 @@ For the simple wall-following driver instead of Nav2:
 ros2 launch ros_test gazebo_slam.launch.py nav2:=false auto_drive:=true
 ```
 
-For the older odom-only fallback mapper:
+To keep using the built-in odom/scan mapper explicitly:
 
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py nav2:=false mapper:=true
@@ -174,4 +191,4 @@ If the RViz map appears to slide with the robot, make sure RViz Global Options u
 
 Move the robot for a few seconds before expecting a useful map. The simulated lidar range is 5 m, so the map expands as the robot explores nearby rooms and corridors.
 
-During live SLAM, RViz may briefly show pose corrections because `slam_toolbox` updates the `map -> odom` transform. Loop closure is enabled, and the explorer deliberately returns near the start pose before saving so the final map is optimized before pathfinding use.
+When SLAM Toolbox is installed and enabled with `mapper:=false`, RViz may briefly show pose corrections because `slam_toolbox` updates the `map -> odom` transform. Loop closure is enabled, and the optional explorer deliberately returns near the start pose before saving so the final map is optimized before pathfinding use.
