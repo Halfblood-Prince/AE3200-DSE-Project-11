@@ -174,12 +174,13 @@ else()
 
     add_executable(web_server website/src/main.cc)
     target_link_libraries(web_server
-        Drogon::Drogon
-        FFmpeg::avcodec
-        FFmpeg::avutil
-        FFmpeg::swscale
-        LibDataChannel::LibDataChannel
-        ${OpenCV_LIBS})
+        PRIVATE
+            Drogon::Drogon
+            FFmpeg::avcodec
+            FFmpeg::avutil
+            FFmpeg::swscale
+            LibDataChannel::LibDataChannel
+            ${OpenCV_LIBS})
     target_include_directories(web_server
         PRIVATE
             ${OpenCV_INCLUDE_DIRS})
