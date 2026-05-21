@@ -1,26 +1,37 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     pkg_share = FindPackageShare("ros_test")
+    run_mode = LaunchConfiguration("run")
+    rum_mode = LaunchConfiguration("rum")
     world = LaunchConfiguration("world")
     gui_config = LaunchConfiguration("gui_config")
     gz_args = LaunchConfiguration("gz_args")
     auto_drive_enabled = LaunchConfiguration("auto_drive")
+    odom_tf_enabled = LaunchConfiguration("odom_tf")
+    lidar_tf_enabled = LaunchConfiguration("lidar_tf")
+    scan_republisher_enabled = LaunchConfiguration("scan_republisher")
     mapper = LaunchConfiguration("mapper")
+    map_odom_tf_enabled = LaunchConfiguration("map_odom_tf")
     nav2_enabled = LaunchConfiguration("nav2")
     explore_enabled = LaunchConfiguration("explore")
+    rviz_enabled = LaunchConfiguration("rviz")
     web_enabled = LaunchConfiguration("web")
     web_port = LaunchConfiguration("web_port")
     web_bind_address = LaunchConfiguration("web_bind_address")
     web_user = LaunchConfiguration("web_user")
     web_password = LaunchConfiguration("web_password")
+
+    is_sim = PythonExpression(["'", run_mode, "' == 'sim' or '", rum_mode, "' == 'sim'"])
+    use_sim_time = ParameterValue(is_sim, value_type=bool)
 
     default_world = PathJoinSubstitution([pkg_share, "robot.sdf"])
     default_gui_config = PathJoinSubstitution([pkg_share, "config", "gazebo_teleop.config"])
@@ -35,6 +46,17 @@ def generate_launch_description():
         launch_arguments={
             "gz_args": [gz_args, " ", world, " --gui-config ", gui_config],
         }.items(),
+        condition=IfCondition(is_sim),
+    )
+
+    sim_mode_log = LogInfo(
+        msg="ros_test launch mode: simulation (Gazebo, ROS-Gazebo bridge, simulated clock)",
+        condition=IfCondition(is_sim),
+    )
+
+    real_mode_log = LogInfo(
+        msg="ros_test launch mode: real robot (hardware topics, wall clock, no Gazebo bridge)",
+        condition=UnlessCondition(is_sim),
     )
 
     bridge = Node(
@@ -50,6 +72,7 @@ def generate_launch_description():
             "/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
             "/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
         ],
+        condition=IfCondition(is_sim),
     )
 
     odom_to_tf = Node(
@@ -57,7 +80,8 @@ def generate_launch_description():
         executable="odom_to_tf",
         name="odom_to_tf",
         output="screen",
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition=IfCondition(odom_tf_enabled),
     )
 
     scan_to_chassis = Node(
@@ -65,7 +89,8 @@ def generate_launch_description():
         executable="scan_to_chassis",
         name="scan_to_chassis",
         output="screen",
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition=IfCondition(scan_republisher_enabled),
     )
 
     lidar_static_tf = Node(
@@ -91,7 +116,8 @@ def generate_launch_description():
             "--child-frame-id",
             "lidar_link",
         ],
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition=IfCondition(lidar_tf_enabled),
     )
 
     map_to_odom_static_tf = Node(
@@ -117,8 +143,10 @@ def generate_launch_description():
             "--child-frame-id",
             "odom",
         ],
-        parameters=[{"use_sim_time": True}],
-        condition=IfCondition(mapper),
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition=IfCondition(
+            PythonExpression(["'", mapper, "' == 'true' and '", map_odom_tf_enabled, "' == 'true'"])
+        ),
     )
 
     simple_mapper = Node(
@@ -126,7 +154,7 @@ def generate_launch_description():
         executable="simple_mapper",
         name="simple_mapper",
         output="screen",
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
         condition=IfCondition(mapper),
     )
 
@@ -138,7 +166,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             "slam_params_file": slam_params,
-            "use_sim_time": "true",
+            "use_sim_time": is_sim,
         }.items(),
         condition=UnlessCondition(mapper),
     )
@@ -150,7 +178,7 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
-                "use_sim_time": True,
+                "use_sim_time": use_sim_time,
                 "input_topic": "/map",
                 "output_topic": "/map_valid",
             }
@@ -163,7 +191,8 @@ def generate_launch_description():
         name="rviz2",
         output="screen",
         arguments=["-d", rviz_config],
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition=IfCondition(rviz_enabled),
     )
 
     nav2_nodes = [
@@ -172,7 +201,7 @@ def generate_launch_description():
             executable="controller_server",
             name="controller_server",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -180,7 +209,7 @@ def generate_launch_description():
             executable="smoother_server",
             name="smoother_server",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -188,7 +217,7 @@ def generate_launch_description():
             executable="planner_server",
             name="planner_server",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -196,7 +225,7 @@ def generate_launch_description():
             executable="behavior_server",
             name="behavior_server",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -204,7 +233,7 @@ def generate_launch_description():
             executable="bt_navigator",
             name="bt_navigator",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -212,7 +241,7 @@ def generate_launch_description():
             executable="waypoint_follower",
             name="waypoint_follower",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -220,7 +249,7 @@ def generate_launch_description():
             executable="map_saver_server",
             name="map_saver",
             output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
             condition=IfCondition(nav2_enabled),
         ),
         Node(
@@ -230,7 +259,7 @@ def generate_launch_description():
             output="screen",
             parameters=[
                 {
-                    "use_sim_time": True,
+                    "use_sim_time": use_sim_time,
                     "autostart": True,
                     "node_names": [
                         "controller_server",
@@ -254,7 +283,7 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
-                "use_sim_time": True,
+                "use_sim_time": use_sim_time,
                 "map_topic": "/map_valid",
                 "map_save_path": "maps/complete_environment",
                 "min_exploration_goals": 10,
@@ -277,7 +306,7 @@ def generate_launch_description():
         executable="map_monitor",
         name="map_monitor",
         output="screen",
-        parameters=[{"use_sim_time": True, "map_topic": "/map_valid"}],
+        parameters=[{"use_sim_time": use_sim_time, "map_topic": "/map_valid"}],
     )
 
     auto_drive = Node(
@@ -285,7 +314,7 @@ def generate_launch_description():
         executable="auto_drive",
         name="auto_drive",
         output="screen",
-        parameters=[{"use_sim_time": True}],
+        parameters=[{"use_sim_time": use_sim_time}],
         condition=IfCondition(auto_drive_enabled),
     )
 
@@ -307,6 +336,16 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument(
+                "run",
+                default_value="real",
+                description="Launch mode: use run:=sim for Gazebo simulation, otherwise real robot mode.",
+            ),
+            DeclareLaunchArgument(
+                "rum",
+                default_value="",
+                description="Typo-compatible alias for run; prefer run:=sim.",
+            ),
+            DeclareLaunchArgument(
                 "world",
                 default_value=default_world,
                 description="Gazebo SDF world to load.",
@@ -327,9 +366,29 @@ def generate_launch_description():
                 description="Set true to make the robot drive itself.",
             ),
             DeclareLaunchArgument(
+                "odom_tf",
+                default_value="true",
+                description="Set false if the real robot already publishes odom -> base_link TF.",
+            ),
+            DeclareLaunchArgument(
+                "lidar_tf",
+                default_value="true",
+                description="Set false if robot_state_publisher already publishes base_link -> lidar_link TF.",
+            ),
+            DeclareLaunchArgument(
+                "scan_republisher",
+                default_value="true",
+                description="Set false if the real lidar already publishes /scan with the desired frame.",
+            ),
+            DeclareLaunchArgument(
                 "mapper",
                 default_value="true",
                 description="Set false to use slam_toolbox when it is installed.",
+            ),
+            DeclareLaunchArgument(
+                "map_odom_tf",
+                default_value="true",
+                description="Set false if another mapper/localizer already publishes map -> odom TF.",
             ),
             DeclareLaunchArgument(
                 "nav2",
@@ -340,6 +399,11 @@ def generate_launch_description():
                 "explore",
                 default_value="false",
                 description="Set false to keep Nav2 ready but disable autonomous exploration.",
+            ),
+            DeclareLaunchArgument(
+                "rviz",
+                default_value="true",
+                description="Set false to disable RViz.",
             ),
             DeclareLaunchArgument(
                 "web",
@@ -366,6 +430,8 @@ def generate_launch_description():
                 default_value="admin",
                 description="Password for the AeroSentinel C++ web dashboard.",
             ),
+            sim_mode_log,
+            real_mode_log,
             web_server,
             gazebo,
             bridge,

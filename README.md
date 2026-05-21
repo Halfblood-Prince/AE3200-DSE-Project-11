@@ -1,6 +1,6 @@
-# ROS 2 Lyrical Gazebo Lidar SLAM Simulation
+# ROS 2 Lyrical Robot SLAM Launch
 
-This package launches a Gazebo Jetty simulation of a differential-drive lidar robot inside a large perimeter-bounded space with sparse SLAM landmarks, bridges the simulated sensor data into ROS 2, runs the built-in mapper by default, and opens RViz.
+This package launches the ROS 2 nodes for a lidar robot by default, and can also start the Gazebo Jetty simulation when requested with `run:=sim`. The real-robot path expects hardware drivers to provide odometry, lidar, and optional camera topics, while the simulation path starts Gazebo and bridges simulated sensor data into ROS 2.
 
 ## Install dependencies
 
@@ -132,24 +132,46 @@ packages are available and CMake is configured with
 
 ## Launch
 
+Real robot mode is the default:
+
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py
 ```
 
-Gazebo opens with a floating Teleop panel, RViz opens with `/scan`, TF, and `/map` displays, and the web dashboard opens manual control over `/cmd_vel`. Nav2 autonomous exploration is detached by default for now.
+This starts the package nodes without Gazebo or the ROS-Gazebo bridge. It uses wall-clock time and expects the real robot stack to provide:
+
+- `/odom` as `nav_msgs/msg/Odometry`
+- `/scan_raw` as `sensor_msgs/msg/LaserScan`, republished to `/scan` with frame `lidar_link`, or an existing `/scan`
+- `/front_camera/image` as `sensor_msgs/msg/Image` when the web camera feed is used
+- a base controller subscribed to `/cmd_vel`
+
+If the robot already publishes its own transforms or `/scan`, disable the helper publishers:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py odom_tf:=false lidar_tf:=false map_odom_tf:=false scan_republisher:=false
+```
+
+Simulation mode is explicit:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim
+```
+
+Gazebo opens with a floating Teleop panel, RViz opens with `/scan`, TF, and `/map` displays, and the web dashboard opens manual control over `/cmd_vel`. Nav2 autonomous exploration is detached by default for now. A typo-compatible `rum:=sim` alias is accepted, but `run:=sim` is preferred.
 
 The launch also starts the AeroSentinel C++ dashboard at `http://127.0.0.1:8080/mission/alpha-0426` and binds it to `0.0.0.0` by default. The default development login is `admin` / `admin`.
 
 The launch starts:
 
-- Gazebo Jetty world: `robot.sdf` with an outer perimeter and sparse non-wall landmarks
-- Gazebo Teleop GUI panel
-- ROS-Gazebo bridge for `/clock`, `/scan_raw`, `/front_camera/image`, `/imu`, `/odom`, and ROS `/cmd_vel`
-- 1920x1080 front camera mounted on the robot chassis at 60 FPS
-- scan republisher from `/scan_raw` to `/scan` with frame `lidar_link`
-- static TF from `base_link` to `lidar_link`, matching the lidar pose in `robot.sdf`
-- `odom_to_tf`, publishing `odom -> base_link`
+- Gazebo Jetty world in `run:=sim`: `robot.sdf` with an outer perimeter and sparse non-wall landmarks
+- Gazebo Teleop GUI panel in `run:=sim`
+- ROS-Gazebo bridge in `run:=sim` for `/clock`, `/scan_raw`, `/front_camera/image`, `/imu`, `/odom`, and ROS `/cmd_vel`
+- 1920x1080 simulated front camera mounted on the robot chassis at 60 FPS in `run:=sim`
+- scan republisher from `/scan_raw` to `/scan` with frame `lidar_link`, unless `scan_republisher:=false`
+- static TF from `base_link` to `lidar_link`, matching the lidar pose in `robot.sdf`, unless `lidar_tf:=false`
+- `odom_to_tf`, publishing `odom -> base_link`, unless `odom_tf:=false`
 - built-in `simple_mapper`, publishing `/map` from odometry and scan data
+- static identity TF from `map -> odom` when the built-in mapper is active, unless `map_odom_tf:=false`
 - `map_filter`, republishing only non-empty SLAM maps as `/map_valid`
 - RViz
 - `map_monitor`, which reports when `/map` is received
@@ -163,31 +185,31 @@ Nav2 and SLAM Toolbox are disabled by default on Lyrical until their binary
 packages are available. To use SLAM Toolbox after installing it:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py mapper:=false
+ros2 launch ros_test gazebo_slam.launch.py run:=sim mapper:=false
 ```
 
 To reattach the navigation stack after installing Nav2:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py nav2:=true
+ros2 launch ros_test gazebo_slam.launch.py run:=sim nav2:=true
 ```
 
 To re-enable autonomous exploration:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py nav2:=true explore:=true
+ros2 launch ros_test gazebo_slam.launch.py run:=sim nav2:=true explore:=true
 ```
 
 For the simple wall-following driver instead of Nav2:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py nav2:=false auto_drive:=true
+ros2 launch ros_test gazebo_slam.launch.py run:=sim nav2:=false auto_drive:=true
 ```
 
 To keep using the built-in odom/scan mapper explicitly:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py nav2:=false mapper:=true
+ros2 launch ros_test gazebo_slam.launch.py run:=sim nav2:=false mapper:=true
 ```
 
 To disable the C++ dashboard or run it on another port:
@@ -195,6 +217,12 @@ To disable the C++ dashboard or run it on another port:
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py web:=false
 ros2 launch ros_test gazebo_slam.launch.py web_port:=8081
+```
+
+To disable RViz on a headless real robot:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py rviz:=false
 ```
 
 The dashboard publishes manual drive commands with keyboard input and the on-screen D-pad at about 25 Hz while keys are held. The default speed limits are `AEROSENTINEL_MAX_LINEAR=2.5` and `AEROSENTINEL_MAX_ANGULAR=1.8`.
@@ -218,16 +246,16 @@ If the RViz map appears to slide with the robot, make sure RViz Global Options u
 ## Expected topics
 
 ```text
-/scan_raw sensor_msgs/msg/LaserScan from Gazebo
+/scan_raw sensor_msgs/msg/LaserScan from Gazebo in run:=sim, or from a real lidar driver
 /scan     sensor_msgs/msg/LaserScan with frame lidar_link
-/front_camera/image sensor_msgs/msg/Image 1920x1080 RGB camera feed at 60 FPS
-/imu     sensor_msgs/msg/Imu
+/front_camera/image sensor_msgs/msg/Image camera feed
+/imu     sensor_msgs/msg/Imu from Gazebo in run:=sim, or from a real IMU driver
 /odom    nav_msgs/msg/Odometry
 /map     nav_msgs/msg/OccupancyGrid
 /map_valid nav_msgs/msg/OccupancyGrid with empty startup maps filtered out
-/cmd_vel geometry_msgs/msg/Twist from the web controls, Gazebo Teleop panel, or other manual publishers
+/cmd_vel geometry_msgs/msg/Twist from the web controls, Gazebo Teleop panel in run:=sim, or other manual publishers
 ```
 
-Move the robot for a few seconds before expecting a useful map. The simulated lidar range is 5 m, so the map expands as the robot explores nearby rooms and corridors.
+Move the robot for a few seconds before expecting a useful map. In simulation, the lidar range is 5 m, so the map expands as the robot explores nearby rooms and corridors.
 
 When SLAM Toolbox is installed and enabled with `mapper:=false`, RViz may briefly show pose corrections because `slam_toolbox` updates the `map -> odom` transform. Loop closure is enabled, and the optional explorer deliberately returns near the start pose before saving so the final map is optimized before pathfinding use.

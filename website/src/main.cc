@@ -467,6 +467,12 @@ std::string h264Fmtp()
 
 std::string cookieValue(const drogon::HttpRequestPtr &request, const std::string &name)
 {
+    const auto cookie = request->getCookie(name);
+    if (!cookie.empty())
+    {
+        return cookie;
+    }
+
     auto header = request->getHeader("cookie");
     if (header.empty())
     {
