@@ -153,7 +153,7 @@ Simulation mode is explicit:
 ros2 launch ros_test gazebo_slam.launch.py run:=sim
 ```
 
-Gazebo opens with a floating Teleop panel, RViz opens with `/points_raw`, OctoMap voxels, TF, and `/map` displays, and the web dashboard opens manual control over `/cmd_vel`. Nav2 autonomous exploration is detached by default for now. A typo-compatible `rum:=sim` alias is accepted, but `run:=sim` is preferred.
+Gazebo opens with a floating Teleop panel, RViz opens with `/points_raw`, 3D OctoMap voxels, and TF displays, and the web dashboard opens manual control over `/cmd_vel`. The projected 2D `/map` is still published for navigation internals, but it is not shown in RViz by default. Nav2 autonomous exploration is detached by default for now. A typo-compatible `rum:=sim` alias is accepted, but `run:=sim` is preferred.
 
 The launch also starts the AeroSentinel C++ dashboard at `http://127.0.0.1:8080/mission/alpha-0426` and binds it to `0.0.0.0` by default. The default development login is `admin` / `admin`.
 
