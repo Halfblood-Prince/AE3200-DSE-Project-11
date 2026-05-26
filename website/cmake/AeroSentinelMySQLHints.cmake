@@ -6,8 +6,23 @@ if(UNIX AND NOT APPLE)
             "/usr/include/mysql"
             CACHE PATH "MySQL include directory" FORCE)
     endif()
+    if(NOT MYSQL_INCLUDE_DIRS AND EXISTS "/usr/include/mysql/mysql.h")
+        set(MYSQL_INCLUDE_DIRS
+            "/usr/include/mysql"
+            CACHE PATH "MySQL include directory" FORCE)
+    endif()
+    if(NOT MARIADB_INCLUDE_DIRS AND EXISTS "/usr/include/mysql/mysql.h")
+        set(MARIADB_INCLUDE_DIRS
+            "/usr/include/mysql"
+            CACHE PATH "MariaDB-compatible MySQL include directory" FORCE)
+    endif()
+    if(MYSQL_INCLUDE_DIRS)
+        list(PREPEND CMAKE_INCLUDE_PATH "${MYSQL_INCLUDE_DIRS}")
+    elseif(MYSQL_INCLUDE_DIR)
+        list(PREPEND CMAKE_INCLUDE_PATH "${MYSQL_INCLUDE_DIR}")
+    endif()
 
-    if(NOT MYSQL_LIB_DIR)
+    if(NOT MYSQL_LIB_DIR OR NOT MYSQL_LIBRARIES)
         set(_AEROSENTINEL_MYSQL_SEARCH_PATHS)
         if(CMAKE_LIBRARY_ARCHITECTURE)
             list(APPEND _AEROSENTINEL_MYSQL_SEARCH_PATHS
@@ -18,7 +33,7 @@ if(UNIX AND NOT APPLE)
             /usr/lib/mysql)
 
         find_library(_AEROSENTINEL_MYSQL_CLIENT_LIBRARY
-            NAMES mysqlclient mariadb
+            NAMES mysqlclient_r mysqlclient mariadbclient mariadb
             PATHS ${_AEROSENTINEL_MYSQL_SEARCH_PATHS}
             NO_DEFAULT_PATH)
 
@@ -39,6 +54,10 @@ if(UNIX AND NOT APPLE)
             set(MYSQL_LIBRARY
                 "${_AEROSENTINEL_MYSQL_CLIENT_LIBRARY}"
                 CACHE FILEPATH "MySQL client library" FORCE)
+            set(MYSQL_LIBRARIES
+                "${_AEROSENTINEL_MYSQL_CLIENT_LIBRARY}"
+                CACHE FILEPATH "MySQL client library" FORCE)
+            list(PREPEND CMAKE_LIBRARY_PATH "${_AEROSENTINEL_MYSQL_CLIENT_LIBRARY_DIR}")
         endif()
 
         unset(_AEROSENTINEL_MYSQL_SEARCH_PATHS)

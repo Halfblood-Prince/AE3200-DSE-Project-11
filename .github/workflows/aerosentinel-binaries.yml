@@ -148,10 +148,15 @@ jobs:
             fi
           done
           cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/dependency_probe_build" -Wno-dev \
+            -DCMAKE_INCLUDE_PATH="${mysql_include_dir}" \
+            -DCMAKE_LIBRARY_PATH="${mysql_lib_dir}" \
             -DMYSQL_INCLUDE_DIR="${mysql_include_dir}" \
+            -DMYSQL_INCLUDE_DIRS="${mysql_include_dir}" \
+            -DMARIADB_INCLUDE_DIRS="${mysql_include_dir}" \
             -DMYSQL_LIB_DIR="${mysql_lib_dir}" \
             -DMYSQL_LIBRARY_DIR="${mysql_lib_dir}" \
-            -DMYSQL_LIBRARY="${mysql_library}"
+            -DMYSQL_LIBRARY="${mysql_library}" \
+            -DMYSQL_LIBRARIES="${mysql_library}"
 
       - name: Build ROS 2 package from source
         shell: bash
@@ -197,10 +202,15 @@ jobs:
             --event-handlers console_direct+ \
             --cmake-args \
               -DROS_TEST_USE_PREBUILT_BINARIES=OFF \
+              -DCMAKE_INCLUDE_PATH="${mysql_include_dir}" \
+              -DCMAKE_LIBRARY_PATH="${mysql_lib_dir}" \
               -DMYSQL_INCLUDE_DIR="${mysql_include_dir}" \
+              -DMYSQL_INCLUDE_DIRS="${mysql_include_dir}" \
+              -DMARIADB_INCLUDE_DIRS="${mysql_include_dir}" \
               -DMYSQL_LIB_DIR="${mysql_lib_dir}" \
               -DMYSQL_LIBRARY_DIR="${mysql_lib_dir}" \
               -DMYSQL_LIBRARY="${mysql_library}" \
+              -DMYSQL_LIBRARIES="${mysql_library}" \
               -DHIREDIS_INCLUDE_DIR="${hiredis_include_dir}" \
               -DHIREDIS_LIBRARY="${hiredis_library}" \
               -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
