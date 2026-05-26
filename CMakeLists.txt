@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(ros_test
     VERSION 0.1.0
-    DESCRIPTION "Gazebo Jetty lidar robot simulation with ROS 2 Lyrical mapping"
+    DESCRIPTION "Gazebo Jetty 3D lidar robot simulation with ROS 2 Lyrical Luth OctoMap mapping"
     LANGUAGES NONE)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -32,8 +32,6 @@ set(ROS_TEST_PREBUILT_EXECUTABLES
     map_filter
     map_monitor
     odom_to_tf
-    scan_to_chassis
-    simple_mapper
     web_server)
 
 if(ROS_TEST_BUILD_NAV2_EXPLORER)
@@ -156,8 +154,6 @@ else()
     add_ros_executable(map_filter src/map_filter.cpp rclcpp nav_msgs)
     add_ros_executable(map_monitor src/map_monitor.cpp rclcpp nav_msgs)
     add_ros_executable(odom_to_tf src/odom_to_tf.cpp rclcpp geometry_msgs nav_msgs tf2_ros)
-    add_ros_executable(scan_to_chassis src/scan_to_chassis.cpp rclcpp sensor_msgs)
-    add_ros_executable(simple_mapper src/simple_mapper.cpp rclcpp nav_msgs sensor_msgs)
 
     if(ROS_TEST_BUILD_NAV2_EXPLORER)
         find_package(nav2_msgs REQUIRED)

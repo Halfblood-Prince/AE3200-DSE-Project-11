@@ -204,7 +204,7 @@ class Nav2WaypointExplorer : public rclcpp::Node
         {
             RCLCPP_INFO(
                 get_logger(),
-                "No frontiers remain; returning near the start pose so slam_toolbox can close the loop");
+                "No frontiers remain; returning near the start pose so the mapper can settle");
             state_ = State::Returning;
         }
         else

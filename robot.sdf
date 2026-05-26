@@ -367,18 +367,24 @@
             <diffuse>0.05 0.18 0.85 1</diffuse>
           </material>
         </visual>
-        <sensor name="gpu_lidar" type="gpu_lidar">
+        <sensor name="gpu_3d_lidar" type="gpu_lidar">
           <pose>0.45 0 0.32 0 0 0</pose>
-          <topic>/scan_raw</topic>
-          <update_rate>40</update_rate>
+          <topic>/points_raw</topic>
+          <update_rate>15</update_rate>
           <ray>
             <scan>
               <horizontal>
-                <samples>720</samples>
+                <samples>1024</samples>
                 <resolution>1</resolution>
                 <min_angle>-3.14159</min_angle>
                 <max_angle>3.14159</max_angle>
               </horizontal>
+              <vertical>
+                <samples>16</samples>
+                <resolution>1</resolution>
+                <min_angle>-0.261799</min_angle>
+                <max_angle>0.261799</max_angle>
+              </vertical>
             </scan>
             <range>
               <min>0.08</min>

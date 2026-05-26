@@ -35,7 +35,7 @@ class MapFilter : public rclcpp::Node
             ++dropped_empty_;
             if (dropped_empty_ == 1)
             {
-                RCLCPP_WARN(get_logger(), "Dropping empty /map from slam_toolbox");
+                RCLCPP_WARN(get_logger(), "Dropping empty /map from the mapper");
             }
             return;
         }

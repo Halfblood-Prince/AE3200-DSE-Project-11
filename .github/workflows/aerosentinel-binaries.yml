@@ -94,6 +94,7 @@ jobs:
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
             ros-${ROS_DISTRO}-nav-msgs \
+            ros-${ROS_DISTRO}-octomap-server \
             ros-${ROS_DISTRO}-rclcpp \
             ros-${ROS_DISTRO}-sensor-msgs \
             ros-${ROS_DISTRO}-tf2-ros
@@ -214,8 +215,6 @@ jobs:
             map_filter
             map_monitor
             odom_to_tf
-            scan_to_chassis
-            simple_mapper
             web_server
           )
           for executable in "${required_executables[@]}"; do
@@ -283,8 +282,6 @@ jobs:
             map_filter
             map_monitor
             odom_to_tf
-            scan_to_chassis
-            simple_mapper
             web_server
           )
 
@@ -385,8 +382,6 @@ jobs:
             map_filter
             map_monitor
             odom_to_tf
-            scan_to_chassis
-            simple_mapper
             web_server
           )
 
@@ -415,8 +410,6 @@ jobs:
               "${package_dir}/map_filter" \
               "${package_dir}/map_monitor" \
               "${package_dir}/odom_to_tf" \
-              "${package_dir}/scan_to_chassis" \
-              "${package_dir}/simple_mapper" \
               "${package_dir}/web_server"
             chmod 0644 "${package_dir}/build-info.env"
           done

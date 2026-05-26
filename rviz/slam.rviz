@@ -53,27 +53,38 @@ Visualization Manager:
         Value: true
       Axis: Z
       Channel Name: intensity
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 0; 0
+      Class: rviz_default_plugins/PointCloud2
+      Color: 255; 80; 0
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: LaserScan
+      Name: 3D Lidar Points
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.04
+      Size (Pixels): 2
+      Size (m): 0.03
       Style: Points
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /scan
+        Value: /points_raw
       Use Fixed Frame: true
-      Use rainbow: true
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: OctoMap Voxels
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /occupied_cells_vis_array
       Value: true
   Enabled: true
   Global Options:

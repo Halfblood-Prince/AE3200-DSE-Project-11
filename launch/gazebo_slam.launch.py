@@ -18,7 +18,6 @@ def generate_launch_description():
     auto_drive_enabled = LaunchConfiguration("auto_drive")
     odom_tf_enabled = LaunchConfiguration("odom_tf")
     lidar_tf_enabled = LaunchConfiguration("lidar_tf")
-    scan_republisher_enabled = LaunchConfiguration("scan_republisher")
     mapper = LaunchConfiguration("mapper")
     map_odom_tf_enabled = LaunchConfiguration("map_odom_tf")
     nav2_enabled = LaunchConfiguration("nav2")
@@ -35,7 +34,7 @@ def generate_launch_description():
 
     default_world = PathJoinSubstitution([pkg_share, "robot.sdf"])
     default_gui_config = PathJoinSubstitution([pkg_share, "config", "gazebo_teleop.config"])
-    slam_params = PathJoinSubstitution([pkg_share, "config", "slam_toolbox.yaml"])
+    octomap_params = PathJoinSubstitution([pkg_share, "config", "octomap_server.yaml"])
     nav2_params = PathJoinSubstitution([pkg_share, "config", "nav2_params.yaml"])
     rviz_config = PathJoinSubstitution([pkg_share, "rviz", "slam.rviz"])
 
@@ -66,12 +65,24 @@ def generate_launch_description():
         output="screen",
         arguments=[
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            "/scan_raw@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
             "/front_camera/image@sensor_msgs/msg/Image[gz.msgs.Image",
             "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU",
             "/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
             "/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
         ],
+        condition=IfCondition(is_sim),
+    )
+
+    points_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="ros_gz_points_bridge",
+        output="screen",
+        arguments=[
+            "/points_raw/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
+        ],
+        parameters=[{"override_frame_id": "lidar_link"}],
+        remappings=[("/points_raw/points", "/points_raw")],
         condition=IfCondition(is_sim),
     )
 
@@ -82,15 +93,6 @@ def generate_launch_description():
         output="screen",
         parameters=[{"use_sim_time": use_sim_time}],
         condition=IfCondition(odom_tf_enabled),
-    )
-
-    scan_to_chassis = Node(
-        package="ros_test",
-        executable="scan_to_chassis",
-        name="scan_to_chassis",
-        output="screen",
-        parameters=[{"use_sim_time": use_sim_time}],
-        condition=IfCondition(scan_republisher_enabled),
     )
 
     lidar_static_tf = Node(
@@ -149,26 +151,17 @@ def generate_launch_description():
         ),
     )
 
-    simple_mapper = Node(
-        package="ros_test",
-        executable="simple_mapper",
-        name="simple_mapper",
+    octomap_server = Node(
+        package="octomap_server",
+        executable="octomap_server_node",
+        name="octomap_server",
         output="screen",
-        parameters=[{"use_sim_time": use_sim_time}],
+        parameters=[octomap_params, {"use_sim_time": use_sim_time}],
+        remappings=[
+            ("cloud_in", "/points_raw"),
+            ("projected_map", "/map"),
+        ],
         condition=IfCondition(mapper),
-    )
-
-    slam_toolbox = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare("slam_toolbox"), "launch", "online_async_launch.py"]
-            )
-        ),
-        launch_arguments={
-            "slam_params_file": slam_params,
-            "use_sim_time": is_sim,
-        }.items(),
-        condition=UnlessCondition(mapper),
     )
 
     map_filter = Node(
@@ -183,6 +176,7 @@ def generate_launch_description():
                 "output_topic": "/map_valid",
             }
         ],
+        condition=IfCondition(mapper),
     )
 
     rviz = Node(
@@ -307,6 +301,7 @@ def generate_launch_description():
         name="map_monitor",
         output="screen",
         parameters=[{"use_sim_time": use_sim_time, "map_topic": "/map_valid"}],
+        condition=IfCondition(mapper),
     )
 
     auto_drive = Node(
@@ -376,14 +371,9 @@ def generate_launch_description():
                 description="Set false if robot_state_publisher already publishes base_link -> lidar_link TF.",
             ),
             DeclareLaunchArgument(
-                "scan_republisher",
-                default_value="true",
-                description="Set false if the real lidar already publishes /scan with the desired frame.",
-            ),
-            DeclareLaunchArgument(
                 "mapper",
                 default_value="true",
-                description="Set false to use slam_toolbox when it is installed.",
+                description="Set false to disable OctoMap mapping.",
             ),
             DeclareLaunchArgument(
                 "map_odom_tf",
@@ -435,13 +425,13 @@ def generate_launch_description():
             web_server,
             gazebo,
             bridge,
+            points_bridge,
             odom_to_tf,
-            scan_to_chassis,
             lidar_static_tf,
             map_to_odom_static_tf,
             TimerAction(
                 period=2.0,
-                actions=[slam_toolbox, simple_mapper, map_filter, map_monitor, auto_drive],
+                actions=[octomap_server, map_filter, map_monitor, auto_drive],
             ),
             TimerAction(period=8.0, actions=[rviz]),
             TimerAction(period=12.0, actions=nav2_nodes),

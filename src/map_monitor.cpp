@@ -59,8 +59,8 @@ class MapMonitor : public rclcpp::Node
         seconds_waited_ += 5;
         RCLCPP_WARN(
             get_logger(),
-            "Still waiting for filtered map after %ds. Move the robot and confirm /scan "
-            "uses frame lidar_link with base_link -> lidar_link TF.",
+            "Still waiting for filtered map after %ds. Move the robot and confirm /points_raw "
+            "uses frame lidar_link with map -> odom -> base_link -> lidar_link TF.",
             seconds_waited_);
     }
 

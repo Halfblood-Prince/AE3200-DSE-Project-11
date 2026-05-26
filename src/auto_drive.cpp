@@ -1,11 +1,13 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 
 namespace
 {
@@ -15,15 +17,15 @@ class AutoDrive : public rclcpp::Node
     AutoDrive() : Node("auto_drive")
     {
         cmd_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
-        scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan",
+        points_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+            "/points_raw",
             10,
-            [this](sensor_msgs::msg::LaserScan::SharedPtr msg) {
-                scan_ = std::move(msg);
-                if (!logged_first_scan_)
+            [this](sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+                cloud_ = std::move(msg);
+                if (!logged_first_cloud_)
                 {
-                    RCLCPP_INFO(get_logger(), "Auto drive received /scan and is publishing /cmd_vel");
-                    logged_first_scan_ = true;
+                    RCLCPP_INFO(get_logger(), "Auto drive received /points_raw and is publishing /cmd_vel");
+                    logged_first_cloud_ = true;
                 }
             });
         timer_ = create_wall_timer(std::chrono::milliseconds(100), [this] {
@@ -35,7 +37,7 @@ class AutoDrive : public rclcpp::Node
     void publish_cmd()
     {
         geometry_msgs::msg::Twist cmd;
-        if (!scan_)
+        if (!cloud_)
         {
             cmd_pub_->publish(cmd);
             return;
@@ -62,23 +64,50 @@ class AutoDrive : public rclcpp::Node
     double sector_min(double start_angle, double end_angle) const
     {
         auto best = std::numeric_limits<double>::infinity();
-        auto angle = static_cast<double>(scan_->angle_min);
-        for (const auto value : scan_->ranges)
+
+        try
         {
-            if (angle >= start_angle && angle <= end_angle && std::isfinite(value))
+            sensor_msgs::PointCloud2ConstIterator<float> iter_x(*cloud_, "x");
+            sensor_msgs::PointCloud2ConstIterator<float> iter_y(*cloud_, "y");
+            sensor_msgs::PointCloud2ConstIterator<float> iter_z(*cloud_, "z");
+            for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z)
             {
-                best = std::min(best, static_cast<double>(value));
+                const auto x = static_cast<double>(*iter_x);
+                const auto y = static_cast<double>(*iter_y);
+                const auto z = static_cast<double>(*iter_z);
+                if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || x <= 0.0)
+                {
+                    continue;
+                }
+                if (z < -0.35 || z > 1.2)
+                {
+                    continue;
+                }
+
+                const auto angle = std::atan2(y, x);
+                if (angle >= start_angle && angle <= end_angle)
+                {
+                    best = std::min(best, std::hypot(x, y));
+                }
             }
-            angle += scan_->angle_increment;
+        }
+        catch (const std::runtime_error &error)
+        {
+            RCLCPP_WARN_THROTTLE(
+                get_logger(),
+                *get_clock(),
+                5000,
+                "Unable to read XYZ fields from /points_raw: %s",
+                error.what());
         }
         return best;
     }
 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_pub_;
-    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr points_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
-    sensor_msgs::msg::LaserScan::SharedPtr scan_;
-    bool logged_first_scan_{false};
+    sensor_msgs::msg::PointCloud2::SharedPtr cloud_;
+    bool logged_first_cloud_{false};
 };
 } // namespace
 
