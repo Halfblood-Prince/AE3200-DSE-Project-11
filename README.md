@@ -84,8 +84,7 @@ sudo apt install \
   libdrogon-dev \
   libhiredis-dev \
   libjsoncpp-dev \
-  libmariadb-dev \
-  libmariadb-dev-compat \
+  default-libmysqlclient-dev \
   libopencv-dev \
   libpq-dev \
   libsqlite3-dev \
