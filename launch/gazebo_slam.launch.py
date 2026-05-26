@@ -2,10 +2,51 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.substitution import Substitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+
+
+def _launch_bool(value):
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+class SimulationMode(Substitution):
+    """Return true when either run:=sim or the typo-compatible rum:=sim is set."""
+
+    def __init__(self, run_mode, rum_mode):
+        super().__init__()
+        self._run_mode = run_mode
+        self._rum_mode = rum_mode
+
+    def describe(self):
+        return "run mode is simulation"
+
+    def perform(self, context):
+        run_value = self._run_mode.perform(context)
+        rum_value = self._rum_mode.perform(context)
+        is_sim = str(run_value or "").strip().lower() == "sim"
+        is_sim = is_sim or str(rum_value or "").strip().lower() == "sim"
+        return "true" if is_sim else "false"
+
+
+class AllTrue(Substitution):
+    """Return true only when all launch configurations are truthy strings."""
+
+    def __init__(self, *launch_configurations):
+        super().__init__()
+        self._launch_configurations = launch_configurations
+
+    def describe(self):
+        return "all launch configurations are true"
+
+    def perform(self, context):
+        for launch_configuration in self._launch_configurations:
+            if not _launch_bool(launch_configuration.perform(context)):
+                return "false"
+        return "true"
 
 
 def generate_launch_description():
@@ -29,7 +70,9 @@ def generate_launch_description():
     web_user = LaunchConfiguration("web_user")
     web_password = LaunchConfiguration("web_password")
 
-    is_sim = PythonExpression(["'", run_mode, "' == 'sim' or '", rum_mode, "' == 'sim'"])
+    is_sim = SimulationMode(run_mode, rum_mode)
+    mapper_and_map_odom_tf = AllTrue(mapper, map_odom_tf_enabled)
+    nav2_and_explore = AllTrue(nav2_enabled, explore_enabled)
     use_sim_time = ParameterValue(is_sim, value_type=bool)
 
     default_world = PathJoinSubstitution([pkg_share, "robot.sdf"])
@@ -146,9 +189,7 @@ def generate_launch_description():
             "odom",
         ],
         parameters=[{"use_sim_time": use_sim_time}],
-        condition=IfCondition(
-            PythonExpression(["'", mapper, "' == 'true' and '", map_odom_tf_enabled, "' == 'true'"])
-        ),
+        condition=IfCondition(mapper_and_map_odom_tf),
     )
 
     octomap_server = Node(
@@ -290,9 +331,7 @@ def generate_launch_description():
                 "return_to_start": True,
             }
         ],
-        condition=IfCondition(
-            PythonExpression(["'", nav2_enabled, "' == 'true' and '", explore_enabled, "' == 'true'"])
-        ),
+        condition=IfCondition(nav2_and_explore),
     )
 
     map_monitor = Node(
