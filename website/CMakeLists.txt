@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(AeroSentinelMySQLHints)
 find_package(Drogon CONFIG REQUIRED)
 find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
 find_package(LibDataChannel CONFIG REQUIRED)

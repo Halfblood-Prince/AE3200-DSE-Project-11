@@ -122,12 +122,36 @@ jobs:
           cat > "${RUNNER_TEMP}/CMakeLists.txt" <<'EOF'
           cmake_minimum_required(VERSION 3.21)
           project(dependency_probe LANGUAGES CXX)
-          find_package(Drogon CONFIG REQUIRED)
           list(APPEND CMAKE_MODULE_PATH "$ENV{GITHUB_WORKSPACE}/website/cmake")
+          include(AeroSentinelMySQLHints)
+          find_package(Drogon CONFIG REQUIRED)
           find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
           find_package(LibDataChannel CONFIG REQUIRED)
           EOF
-          cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/dependency_probe_build" -Wno-dev
+          multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
+          mysql_include_dir="$(mysql_config --variable=pkgincludedir 2>/dev/null || true)"
+          if [ -z "${mysql_include_dir}" ]; then
+            mysql_include_dir="$(mysql_config --include | tr ' ' '\n' | sed -n 's/^-I//p' | head -n1)"
+          fi
+          mysql_lib_dir="$(mysql_config --variable=pkglibdir 2>/dev/null || true)"
+          if [ -z "${mysql_lib_dir}" ]; then
+            mysql_lib_dir="$(mysql_config --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -n1)"
+          fi
+          mysql_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 \( -name 'libmysqlclient.so' -o -name 'libmariadb.so' \) -print -quit)"
+          if [ -z "${mysql_lib_dir}" ] && [ -n "${mysql_library}" ]; then
+            mysql_lib_dir="$(dirname "${mysql_library}")"
+          fi
+          for required_var in mysql_include_dir mysql_lib_dir mysql_library; do
+            if [ -z "${!required_var}" ]; then
+              echo "Unable to resolve ${required_var}."
+              exit 1
+            fi
+          done
+          cmake -S "${RUNNER_TEMP}" -B "${RUNNER_TEMP}/dependency_probe_build" -Wno-dev \
+            -DMYSQL_INCLUDE_DIR="${mysql_include_dir}" \
+            -DMYSQL_LIB_DIR="${mysql_lib_dir}" \
+            -DMYSQL_LIBRARY_DIR="${mysql_lib_dir}" \
+            -DMYSQL_LIBRARY="${mysql_library}"
 
       - name: Build ROS 2 package from source
         shell: bash
@@ -146,6 +170,9 @@ jobs:
             mysql_lib_dir="$(mysql_config --libs | tr ' ' '\n' | sed -n 's/^-L//p' | head -n1)"
           fi
           mysql_library="$(find "/usr/lib/${multiarch}" /usr/lib -maxdepth 2 \( -name 'libmysqlclient.so' -o -name 'libmariadb.so' \) -print -quit)"
+          if [ -z "${mysql_lib_dir}" ] && [ -n "${mysql_library}" ]; then
+            mysql_lib_dir="$(dirname "${mysql_library}")"
+          fi
           hiredis_include_dir="$(pkg-config --variable=includedir hiredis 2>/dev/null || true)"
           if [ -z "${hiredis_include_dir}" ]; then
             hiredis_include_dir="/usr/include"
