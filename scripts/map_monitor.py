@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Watch the filtered map topic and report whether mapping has started."""
+
 from __future__ import annotations
 
 import rclpy
@@ -8,6 +10,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 
 def transient_map_qos() -> QoSProfile:
+    """Match the map server's latched QoS for reliable map status checks."""
     return QoSProfile(
         depth=1,
         durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -16,10 +19,16 @@ def transient_map_qos() -> QoSProfile:
 
 
 class MapMonitor(Node):
+    """Log helpful status while OctoMap and the projected map warm up."""
+
     def __init__(self) -> None:
+        """Create the map subscription and periodic status timer."""
         super().__init__("map_monitor")
+
+        # The launch file defaults this to /map_valid from map_filter.
         self.declare_parameter("map_topic", "/map_valid")
 
+        # Keep track of the first good map so warnings stop once mapping works.
         self._received_map = False
         self._seconds_waited = 0
 
@@ -33,6 +42,7 @@ class MapMonitor(Node):
         self._timer = self.create_timer(5.0, self._report_status)
 
     def _handle_map(self, msg: OccupancyGrid) -> None:
+        """Record the first non-empty map and report its size."""
         if self._received_map:
             return
         if msg.info.width == 0 or msg.info.height == 0:
@@ -47,6 +57,7 @@ class MapMonitor(Node):
         )
 
     def _report_status(self) -> None:
+        """Warn periodically while no usable map has arrived."""
         if self._received_map:
             return
 
@@ -59,6 +70,7 @@ class MapMonitor(Node):
 
 
 def main(args: list[str] | None = None) -> None:
+    """Run the map monitor node."""
     rclpy.init(args=args)
     node = MapMonitor()
     try:

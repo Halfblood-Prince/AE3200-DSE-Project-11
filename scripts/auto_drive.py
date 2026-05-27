@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Simple lidar-reactive driver for keeping the robot moving in simulation."""
+
 from __future__ import annotations
 
 import math
@@ -12,12 +14,19 @@ from sensor_msgs_py import point_cloud2
 
 
 class AutoDrive(Node):
+    """Read the 3D lidar cloud and publish a small obstacle-avoidance twist."""
+
     def __init__(self) -> None:
+        """Create publishers, subscribers, and the command timer."""
         super().__init__("auto_drive")
+
+        # The latest point cloud is cached because the timer publishes commands
+        # at a fixed rate even when lidar messages arrive at a different rate.
         self._cloud: Optional[PointCloud2] = None
         self._logged_first_cloud = False
         self._last_point_warning_ns = 0
 
+        # Commands go to /cmd_vel, which Gazebo teleop and VelocityControl use.
         self._cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self._points_sub = self.create_subscription(
             PointCloud2,
@@ -28,6 +37,7 @@ class AutoDrive(Node):
         self._timer = self.create_timer(0.1, self._publish_cmd)
 
     def _handle_cloud(self, msg: PointCloud2) -> None:
+        """Store the newest lidar scan and log once when data starts flowing."""
         self._cloud = msg
         if not self._logged_first_cloud:
             self.get_logger().info(
@@ -36,25 +46,31 @@ class AutoDrive(Node):
             self._logged_first_cloud = True
 
     def _publish_cmd(self) -> None:
+        """Publish forward motion unless the front sector is blocked."""
         cmd = Twist()
         if self._cloud is None:
+            # Publishing zero while waiting prevents stale motion commands.
             self._cmd_pub.publish(cmd)
             return
 
+        # Split the forward half-space into right, front, and left sectors.
         front = self._sector_min(-0.35, 0.35)
         left = self._sector_min(0.35, 1.2)
         right = self._sector_min(-1.2, -0.35)
 
         if front < 0.75:
+            # Turn toward the side with more clearance.
             cmd.linear.x = 0.0
             cmd.angular.z = -0.8 if left < right else 0.8
         else:
+            # Cruise slowly with a slight turn so the map grows even in open space.
             cmd.linear.x = 0.25
             cmd.angular.z = 0.18
 
         self._cmd_pub.publish(cmd)
 
     def _sector_min(self, start_angle: float, end_angle: float) -> float:
+        """Return the closest valid point distance inside an angular sector."""
         if self._cloud is None:
             return math.inf
 
@@ -76,6 +92,7 @@ class AutoDrive(Node):
                     or x <= 0.0
                 ):
                     continue
+                # Ignore floor noise and high returns that are not immediate obstacles.
                 if z < -0.35 or z > 1.2:
                     continue
 
@@ -94,6 +111,7 @@ class AutoDrive(Node):
 
 
 def main(args: list[str] | None = None) -> None:
+    """Start the ROS node and keep it alive until shutdown."""
     rclpy.init(args=args)
     node = AutoDrive()
     try:

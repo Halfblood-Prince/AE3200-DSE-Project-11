@@ -1,1 +1,2 @@
+# Ignore Python bytecode cache folders created by local checks.
 __pycache__/

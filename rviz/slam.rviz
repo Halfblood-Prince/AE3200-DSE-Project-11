@@ -1,3 +1,4 @@
+# RViz layout for viewing the 3D lidar cloud, TF tree, and OctoMap voxels.
 Panels:
   - Class: rviz_common/Displays
     Name: Displays
@@ -6,6 +7,7 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    # Ground grid gives visual scale in the fixed map frame.
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz_default_plugins/Grid
@@ -16,6 +18,7 @@ Visualization Manager:
       Plane Cell Count: 40
       Reference Frame: <Fixed Frame>
       Value: true
+    # TF verifies map -> odom -> base_link -> lidar_link alignment.
     - Class: rviz_default_plugins/TF
       Enabled: true
       Frame Timeout: 15
@@ -30,6 +33,7 @@ Visualization Manager:
         {}
       Update Interval: 0
       Value: true
+    # Raw bridged lidar points from robot.sdf.
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -59,6 +63,7 @@ Visualization Manager:
         Value: /points_raw
       Use Fixed Frame: true
       Value: true
+    # OctoMap publishes occupied voxels as visualization markers.
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: OctoMap Voxels
@@ -73,17 +78,20 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
+    # OctoMap uses map as the global frame.
     Background Color: 48; 48; 48
     Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
+    # Basic interactive tools are enough for inspection and camera movement.
     - Class: rviz_default_plugins/Interact
       Hide Inactive Objects: true
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
   Value: true
   Views:
+    # Default orbit camera starts high enough to see the environment.
     Current:
       Class: rviz_default_plugins/Orbit
       Distance: 13
@@ -98,5 +106,6 @@ Visualization Manager:
       Yaw: 0.75
     Saved: ~
 Window Geometry:
+  # Conservative desktop size that fits common laptop screens.
   Height: 900
   Width: 1200

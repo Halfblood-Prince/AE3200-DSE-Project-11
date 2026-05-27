@@ -1,3 +1,5 @@
+"""Launch Gazebo, ROS bridges, OctoMap mapping, RViz, and helper nodes."""
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
@@ -10,6 +12,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def _launch_bool(value):
+    """Interpret common launch argument strings as booleans."""
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -17,14 +20,17 @@ class SimulationMode(Substitution):
     """Return true when either run:=sim or the typo-compatible rum:=sim is set."""
 
     def __init__(self, run_mode, rum_mode):
+        """Store launch configurations for both supported mode arguments."""
         super().__init__()
         self._run_mode = run_mode
         self._rum_mode = rum_mode
 
     def describe(self):
+        """Describe this substitution in launch diagnostics."""
         return "run mode is simulation"
 
     def perform(self, context):
+        """Evaluate run/rum values inside the current launch context."""
         run_value = self._run_mode.perform(context)
         rum_value = self._rum_mode.perform(context)
         is_sim = str(run_value or "").strip().lower() == "sim"
@@ -32,27 +38,11 @@ class SimulationMode(Substitution):
         return "true" if is_sim else "false"
 
 
-class AllTrue(Substitution):
-    """Return true only when all launch configurations are truthy strings."""
-
-    def __init__(self, *launch_configurations):
-        super().__init__()
-        self._launch_configurations = launch_configurations
-
-    def describe(self):
-        return "all launch configurations are true"
-
-    def perform(self, context):
-        for launch_configuration in self._launch_configurations:
-            if not _launch_bool(launch_configuration.perform(context)):
-                return "false"
-        return "true"
-
-
 class GazeboArgs(Substitution):
     """Build gz sim arguments with optional GUI disabled."""
 
     def __init__(self, gz_args, world, gui_config, gazebo_gui):
+        """Store the arguments needed to compose the gz sim command line."""
         super().__init__()
         self._gz_args = gz_args
         self._world = world
@@ -60,9 +50,11 @@ class GazeboArgs(Substitution):
         self._gazebo_gui = gazebo_gui
 
     def describe(self):
+        """Describe this substitution in launch diagnostics."""
         return "Gazebo command-line arguments"
 
     def perform(self, context):
+        """Return the final gz_args string for GUI or server-only mode."""
         gz_args = str(self._gz_args.perform(context) or "").strip()
         world = str(self._world.perform(context) or "").strip()
         gui_enabled = _launch_bool(self._gazebo_gui.perform(context))
@@ -75,6 +67,8 @@ class GazeboArgs(Substitution):
 
 
 def generate_launch_description():
+    """Create the full launch graph for real robot and simulation modes."""
+    # Launch configurations keep every user-facing option in one place.
     pkg_share = FindPackageShare("ros_test")
     run_mode = LaunchConfiguration("run")
     rum_mode = LaunchConfiguration("rum")
@@ -87,47 +81,39 @@ def generate_launch_description():
     lidar_tf_enabled = LaunchConfiguration("lidar_tf")
     mapper = LaunchConfiguration("mapper")
     map_odom_tf_enabled = LaunchConfiguration("map_odom_tf")
-    nav2_enabled = LaunchConfiguration("nav2")
-    explore_enabled = LaunchConfiguration("explore")
     rviz_enabled = LaunchConfiguration("rviz")
-    web_enabled = LaunchConfiguration("web")
-    web_port = LaunchConfiguration("web_port")
-    web_bind_address = LaunchConfiguration("web_bind_address")
-    web_user = LaunchConfiguration("web_user")
-    web_password = LaunchConfiguration("web_password")
 
+    # Derived substitutions combine simple launch flags into reusable conditions.
     is_sim = SimulationMode(run_mode, rum_mode)
-    mapper_and_map_odom_tf = AllTrue(mapper, map_odom_tf_enabled)
-    nav2_and_explore = AllTrue(nav2_enabled, explore_enabled)
     use_sim_time = ParameterValue(is_sim, value_type=bool)
 
-    default_world = PathJoinSubstitution([pkg_share, "robot.sdf"])
+    # Package-relative assets are resolved after install by FindPackageShare.
+    default_world = PathJoinSubstitution([pkg_share, "robot", "environment.world"])
     default_gui_config = PathJoinSubstitution([pkg_share, "config", "gazebo_teleop.config"])
     octomap_params = PathJoinSubstitution([pkg_share, "config", "octomap_server.yaml"])
-    nav2_params = PathJoinSubstitution([pkg_share, "config", "nav2_params.yaml"])
     rviz_config = PathJoinSubstitution([pkg_share, "rviz", "slam.rviz"])
     gazebo_args = GazeboArgs(gz_args, world, gui_config, gazebo_gui_enabled)
 
+    # Gazebo runs only in simulation mode and uses the Teleop GUI config.
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"])
         ),
-        launch_arguments={
-            "gz_args": gazebo_args,
-        }.items(),
+        launch_arguments={"gz_args": gazebo_args}.items(),
         condition=IfCondition(is_sim),
     )
 
+    # One clear log line makes it obvious which mode was selected.
     sim_mode_log = LogInfo(
         msg="ros_test launch mode: simulation (Gazebo, ROS-Gazebo bridge, simulated clock)",
         condition=IfCondition(is_sim),
     )
-
     real_mode_log = LogInfo(
         msg="ros_test launch mode: real robot (hardware topics, wall clock, no Gazebo bridge)",
         condition=UnlessCondition(is_sim),
     )
 
+    # Bridge clock, camera, IMU, odom, and velocity commands between Gazebo and ROS.
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -143,6 +129,7 @@ def generate_launch_description():
         condition=IfCondition(is_sim),
     )
 
+    # The 3D lidar needs a PointCloudPacked bridge plus a stable lidar frame id.
     points_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -156,6 +143,7 @@ def generate_launch_description():
         condition=IfCondition(is_sim),
     )
 
+    # Convert /odom into TF so the map, robot base, and sensors share one tree.
     odom_to_tf = Node(
         package="ros_test",
         executable="odom_to_tf",
@@ -165,6 +153,7 @@ def generate_launch_description():
         condition=IfCondition(odom_tf_enabled),
     )
 
+    # The SDF lidar pose is mirrored here as base_link -> lidar_link.
     lidar_static_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -192,6 +181,7 @@ def generate_launch_description():
         condition=IfCondition(lidar_tf_enabled),
     )
 
+    # OctoMap needs a map frame; this identity transform keeps the demo simple.
     map_to_odom_static_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -216,9 +206,10 @@ def generate_launch_description():
             "odom",
         ],
         parameters=[{"use_sim_time": use_sim_time}],
-        condition=IfCondition(mapper_and_map_odom_tf),
+        condition=IfCondition(map_odom_tf_enabled),
     )
 
+    # OctoMap consumes the 3D point cloud and publishes both 3D and 2D map outputs.
     octomap_server = Node(
         package="octomap_server",
         executable="octomap_server_node",
@@ -232,6 +223,7 @@ def generate_launch_description():
         condition=IfCondition(mapper),
     )
 
+    # Filter avoids sending empty projected maps to downstream tools.
     map_filter = Node(
         package="ros_test",
         executable="map_filter",
@@ -247,6 +239,7 @@ def generate_launch_description():
         condition=IfCondition(mapper),
     )
 
+    # RViz visualizes TF, the raw point cloud, and OctoMap voxels.
     rviz = Node(
         package="rviz2",
         executable="rviz2",
@@ -257,110 +250,7 @@ def generate_launch_description():
         condition=IfCondition(rviz_enabled),
     )
 
-    nav2_nodes = [
-        Node(
-            package="nav2_controller",
-            executable="controller_server",
-            name="controller_server",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_smoother",
-            executable="smoother_server",
-            name="smoother_server",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_planner",
-            executable="planner_server",
-            name="planner_server",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_behaviors",
-            executable="behavior_server",
-            name="behavior_server",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_bt_navigator",
-            executable="bt_navigator",
-            name="bt_navigator",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_waypoint_follower",
-            executable="waypoint_follower",
-            name="waypoint_follower",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_map_server",
-            executable="map_saver_server",
-            name="map_saver",
-            output="screen",
-            parameters=[nav2_params, {"use_sim_time": use_sim_time}],
-            condition=IfCondition(nav2_enabled),
-        ),
-        Node(
-            package="nav2_lifecycle_manager",
-            executable="lifecycle_manager",
-            name="lifecycle_manager_navigation",
-            output="screen",
-            parameters=[
-                {
-                    "use_sim_time": use_sim_time,
-                    "autostart": True,
-                    "node_names": [
-                        "controller_server",
-                        "smoother_server",
-                        "planner_server",
-                        "behavior_server",
-                        "bt_navigator",
-                        "waypoint_follower",
-                        "map_saver",
-                    ],
-                }
-            ],
-            condition=IfCondition(nav2_enabled),
-        ),
-    ]
-
-    nav2_explorer = Node(
-        package="ros_test",
-        executable="nav2_waypoint_explorer",
-        name="nav2_waypoint_explorer",
-        output="screen",
-        parameters=[
-            {
-                "use_sim_time": use_sim_time,
-                "map_topic": "/map_valid",
-                "map_save_path": "maps/complete_environment",
-                "min_exploration_goals": 10,
-                "frontier_timeout_sec": 45.0,
-                "initial_scan_sec": 10.0,
-                "frontier_sample_step_m": 0.35,
-                "frontier_clearance_m": 0.45,
-                "frontier_min_distance_m": 3.0,
-                "frontier_max_distance_m": 18.0,
-                "return_to_start": True,
-            }
-        ],
-        condition=IfCondition(nav2_and_explore),
-    )
-
+    # Monitor prints useful hints when mapping has not produced a valid map yet.
     map_monitor = Node(
         package="ros_test",
         executable="map_monitor",
@@ -370,6 +260,7 @@ def generate_launch_description():
         condition=IfCondition(mapper),
     )
 
+    # auto_drive is a lightweight way to move the sliding cuboid with lidar feedback.
     auto_drive = Node(
         package="ros_test",
         executable="auto_drive",
@@ -379,21 +270,7 @@ def generate_launch_description():
         condition=IfCondition(auto_drive_enabled),
     )
 
-    web_server = Node(
-        package="ros_test",
-        executable="web_server",
-        name="aerosentinel_web",
-        output="screen",
-        additional_env={
-            "PORT": web_port,
-            "AEROSENTINEL_BIND_ADDRESS": web_bind_address,
-            "AEROSENTINEL_USER": web_user,
-            "AEROSENTINEL_PASSWORD": web_password,
-            "AEROSENTINEL_PUBLIC_DIR": PathJoinSubstitution([pkg_share, "website", "public"]),
-        },
-        condition=IfCondition(web_enabled),
-    )
-
+    # Timers stagger startup so bridges and transforms exist before consumers start.
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -409,7 +286,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "world",
                 default_value=default_world,
-                description="Gazebo SDF world to load.",
+                description="Gazebo world file to load.",
             ),
             DeclareLaunchArgument(
                 "gui_config",
@@ -452,48 +329,12 @@ def generate_launch_description():
                 description="Set false if another mapper/localizer already publishes map -> odom TF.",
             ),
             DeclareLaunchArgument(
-                "nav2",
-                default_value="false",
-                description="Set false to disable the Nav2 navigation stack.",
-            ),
-            DeclareLaunchArgument(
-                "explore",
-                default_value="false",
-                description="Set false to keep Nav2 ready but disable autonomous exploration.",
-            ),
-            DeclareLaunchArgument(
                 "rviz",
                 default_value="true",
                 description="Set false to disable RViz.",
             ),
-            DeclareLaunchArgument(
-                "web",
-                default_value="true",
-                description="Set false to disable the AeroSentinel C++ web dashboard.",
-            ),
-            DeclareLaunchArgument(
-                "web_port",
-                default_value="8080",
-                description="Port for the AeroSentinel C++ web dashboard.",
-            ),
-            DeclareLaunchArgument(
-                "web_bind_address",
-                default_value="0.0.0.0",
-                description="Bind address for the AeroSentinel C++ web dashboard.",
-            ),
-            DeclareLaunchArgument(
-                "web_user",
-                default_value="admin",
-                description="Username for the AeroSentinel C++ web dashboard.",
-            ),
-            DeclareLaunchArgument(
-                "web_password",
-                default_value="admin",
-                description="Password for the AeroSentinel C++ web dashboard.",
-            ),
             sim_mode_log,
             real_mode_log,
-            web_server,
             gazebo,
             bridge,
             points_bridge,
@@ -505,7 +346,5 @@ def generate_launch_description():
                 actions=[octomap_server, map_filter, map_monitor, auto_drive],
             ),
             TimerAction(period=8.0, actions=[rviz]),
-            TimerAction(period=12.0, actions=nav2_nodes),
-            TimerAction(period=25.0, actions=[nav2_explorer]),
         ]
     )

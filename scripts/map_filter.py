@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Republish only valid OccupancyGrid messages from the mapper."""
+
 from __future__ import annotations
 
 import rclpy
@@ -8,6 +10,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 
 def transient_map_qos() -> QoSProfile:
+    """Use latched map QoS so late subscribers immediately receive the map."""
     return QoSProfile(
         depth=1,
         durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -16,11 +19,17 @@ def transient_map_qos() -> QoSProfile:
 
 
 class MapFilter(Node):
+    """Drop empty maps that can confuse downstream navigation tools."""
+
     def __init__(self) -> None:
+        """Create the input subscription and filtered map publisher."""
         super().__init__("map_filter")
+
+        # Topics are parameters so the node can be reused with other mappers.
         self.declare_parameter("input_topic", "/map")
         self.declare_parameter("output_topic", "/map_valid")
 
+        # These flags keep startup logs useful without repeating every message.
         self._dropped_empty = 0
         self._published_first = False
 
@@ -37,6 +46,7 @@ class MapFilter(Node):
         )
 
     def _handle_map(self, msg: OccupancyGrid) -> None:
+        """Forward non-empty occupancy grids and suppress empty placeholders."""
         if msg.info.width == 0 or msg.info.height == 0:
             self._dropped_empty += 1
             if self._dropped_empty == 1:
@@ -53,6 +63,7 @@ class MapFilter(Node):
 
 
 def main(args: list[str] | None = None) -> None:
+    """Run the map filter node."""
     rclpy.init(args=args)
     node = MapFilter()
     try:
