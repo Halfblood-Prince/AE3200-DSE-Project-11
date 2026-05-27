@@ -268,7 +268,6 @@ def main():
     """
     path = astar(grid, start, goal)
     print_path_result(path)
-    return 0
 
 
 if __name__ == "__main__":
