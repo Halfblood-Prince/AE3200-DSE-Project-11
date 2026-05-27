@@ -90,11 +90,9 @@ jobs:
             uuid-dev \
             zlib1g-dev \
             python3-colcon-common-extensions \
-            ros-${ROS_DISTRO}-action-msgs \
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
             ros-${ROS_DISTRO}-nav-msgs \
-            ros-${ROS_DISTRO}-nav2-msgs \
             ros-${ROS_DISTRO}-octomap-server \
             ros-${ROS_DISTRO}-rclcpp \
             ros-${ROS_DISTRO}-rclpy \

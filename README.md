@@ -40,11 +40,9 @@ prebuilt-server package build:
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
-  ros-lyrical-action-msgs \
   ros-lyrical-ament-cmake \
   ros-lyrical-geometry-msgs \
   ros-lyrical-nav-msgs \
-  ros-lyrical-nav2-msgs \
   ros-lyrical-octomap-server \
   ros-lyrical-rclcpp \
   ros-lyrical-rclpy \
@@ -58,7 +56,8 @@ sudo apt install \
 ```
 
 Nav2 is optional. The launch file keeps Nav2 disabled by default. Install the
-Lyrical Nav2 packages separately before using `nav2:=true` or `explore:=true`.
+Lyrical Nav2 packages separately before using `nav2:=true` or `explore:=true`;
+the explorer also needs the package that provides Python `nav2_msgs` bindings.
 
 ## Build
 

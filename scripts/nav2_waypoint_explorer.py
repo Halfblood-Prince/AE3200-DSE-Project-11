@@ -9,16 +9,25 @@ from time import monotonic
 from typing import Optional
 
 import rclpy
-from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Twist
-from nav2_msgs.action import NavigateToPose
-from nav2_msgs.srv import SaveMap
 from nav_msgs.msg import OccupancyGrid
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from tf2_ros import Buffer, TransformException, TransformListener
+
+try:
+    from action_msgs.msg import GoalStatus
+    from nav2_msgs.action import NavigateToPose
+    from nav2_msgs.srv import SaveMap
+except ImportError as error:
+    GoalStatus = None
+    NavigateToPose = None
+    SaveMap = None
+    NAV2_IMPORT_ERROR = error
+else:
+    NAV2_IMPORT_ERROR = None
 
 
 Cell = tuple[int, int]
@@ -538,6 +547,18 @@ class Nav2WaypointExplorer(Node):
 
 def main(args: list[str] | None = None) -> None:
     rclpy.init(args=args)
+    if NAV2_IMPORT_ERROR is not None:
+        node = Node("nav2_waypoint_explorer")
+        try:
+            node.get_logger().error(
+                "nav2_waypoint_explorer requires Nav2 Python message bindings. "
+                f"Install the Lyrical Nav2 packages that provide nav2_msgs: {NAV2_IMPORT_ERROR}"
+            )
+        finally:
+            node.destroy_node()
+            rclpy.shutdown()
+        return
+
     node = Nav2WaypointExplorer()
     try:
         rclpy.spin(node)
