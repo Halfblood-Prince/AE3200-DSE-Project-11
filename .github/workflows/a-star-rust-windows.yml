@@ -59,11 +59,15 @@ jobs:
             dummy_files\a.rs `
             -o dist\windows-amd64\a_star_rust.dll
 
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Compile C++ executable and DLL
         shell: cmd
         run: |
-          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSINSTALLDIR=%%i
-          call "%VSINSTALLDIR%\VC\Auxiliary\Build\vcvars64.bat"
+          where cl
 
           cl /nologo /EHsc /std:c++17 /O2 /MT ^
             dummy_files\a.cpp ^
