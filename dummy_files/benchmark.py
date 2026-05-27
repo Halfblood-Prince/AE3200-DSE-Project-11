@@ -14,13 +14,6 @@ import a as astar_demo
 import cpp_astar
 
 
-def _path_from_json(raw_path):
-    if raw_path is None:
-        return None
-
-    return [tuple(int(value) for value in position) for position in raw_path]
-
-
 def benchmark_python(iterations):
     path = None
     started = time.perf_counter_ns()
@@ -71,7 +64,7 @@ def _benchmark_cpp_executable(iterations, cpp_binary=None):
         "implementation": "c++-exe",
         "iterations": int(result["iterations"]),
         "duration_ns": int(result["duration_ns"]),
-        "path": _path_from_json(result["result"]["path"]),
+        "path": cpp_astar.path_from_json(result["result"]["path"]),
         "binary": str(executable),
     }
 

@@ -118,9 +118,19 @@ def _load_cpp_library(library_path_text):
 
 def _position_tuple(position):
     if len(position) != 3:
-        raise ValueError("Position must have exactly three values: layer, row, column.")
+        raise ValueError("Position must have exactly three values: x, y, z.")
 
     return tuple(int(value) for value in position)
+
+
+def _to_cpp_position(position):
+    x, y, z = _position_tuple(position)
+    return z, y, x
+
+
+def _from_cpp_position(position):
+    layer, row, column = _position_tuple(position)
+    return column, row, layer
 
 
 class CppAStarSolver:
@@ -141,8 +151,8 @@ class CppAStarSolver:
         self.grid_pointer = self.grid.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
 
     def astar(self, start_pos, goal_pos):
-        start_layer, start_row, start_col = _position_tuple(start_pos)
-        goal_layer, goal_row, goal_col = _position_tuple(goal_pos)
+        start_layer, start_row, start_col = _to_cpp_position(start_pos)
+        goal_layer, goal_row, goal_col = _to_cpp_position(goal_pos)
 
         count = self.library.cpp_astar_path(
             self.grid_pointer,
@@ -171,21 +181,14 @@ class CppAStarSolver:
         if count < 0:
             raise RuntimeError(f"C++ A* failed with error code {count}.")
 
-        return [
-            (
-                int(self.output[index * 3]),
-                int(self.output[index * 3 + 1]),
-                int(self.output[index * 3 + 2]),
-            )
-            for index in range(count)
-        ]
+        return [_from_cpp_position(self.output[index * 3 : index * 3 + 3]) for index in range(count)]
 
 
 def path_from_json(raw_path):
     if raw_path is None:
         return None
 
-    return [tuple(int(value) for value in position) for position in raw_path]
+    return [_from_cpp_position(position) for position in raw_path]
 
 
 def astar_cpp_executable(cpp_binary=None):
