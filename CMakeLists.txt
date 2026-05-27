@@ -22,21 +22,20 @@ if(NOT ament_cmake_FOUND)
         "colcon build.")
 endif()
 
-option(
-    ROS_TEST_BUILD_NAV2_EXPLORER
-    "Build/install the optional Nav2 waypoint explorer; requires Nav2 packages to be available"
-    OFF)
-
-set(ROS_TEST_PREBUILT_EXECUTABLES
+set(ROS_TEST_PYTHON_EXECUTABLES
     auto_drive
     map_filter
     map_monitor
-    odom_to_tf
-    web_server)
+    nav2_waypoint_explorer
+    odom_to_tf)
 
-if(ROS_TEST_BUILD_NAV2_EXPLORER)
-    list(APPEND ROS_TEST_PREBUILT_EXECUTABLES nav2_waypoint_explorer)
-endif()
+foreach(executable IN LISTS ROS_TEST_PYTHON_EXECUTABLES)
+    install(PROGRAMS "scripts/${executable}.py"
+        DESTINATION lib/${PROJECT_NAME}
+        RENAME "${executable}")
+endforeach()
+
+set(ROS_TEST_PREBUILT_EXECUTABLES web_server)
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ROS_TEST_SYSTEM_PROCESSOR)
 set(ROS_TEST_BIN_ARCH "")
@@ -52,7 +51,7 @@ set(ROS_TEST_PREBUILT_MANIFEST "${ROS_TEST_PREBUILT_DIR}/build-info.env")
 
 option(
     ROS_TEST_USE_PREBUILT_BINARIES
-    "Install shipped executables and dependency libraries from bin/<arch> instead of compiling package code"
+    "Install shipped web_server and dependency libraries from bin/<arch> instead of compiling the Drogon server"
     ON)
 
 function(ros_test_target_dependencies target)
@@ -70,13 +69,6 @@ function(ros_test_target_dependencies target)
             message(FATAL_ERROR "No CMake target or library variable found for dependency ${dependency}")
         endif()
     endforeach()
-endfunction()
-
-function(add_ros_executable target source)
-    add_executable(${target} ${source})
-    ros_test_target_dependencies(${target} ${ARGN})
-    install(TARGETS ${target}
-        RUNTIME DESTINATION lib/${PROJECT_NAME})
 endfunction()
 
 function(require_prebuilt_metadata key expected)
@@ -114,7 +106,7 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
             "Push to ros_simulation, wait for the AeroSentinel Linux Binaries "
             "workflow to publish bin/${ROS_TEST_BIN_ARCH}/build-info.env, and "
             "pull that commit. Maintainers can configure with "
-            "-DROS_TEST_USE_PREBUILT_BINARIES=OFF to build from source.")
+            "-DROS_TEST_USE_PREBUILT_BINARIES=OFF to build the Drogon server from source.")
     endif()
     require_prebuilt_metadata("ROS_DISTRO" "${ROS_TEST_TARGET_ROS_DISTRO}")
     require_prebuilt_metadata("UBUNTU_CODENAME" "${ROS_TEST_TARGET_UBUNTU_CODENAME}")
@@ -129,7 +121,7 @@ if(ROS_TEST_USE_PREBUILT_BINARIES)
         message(FATAL_ERROR "No prebuilt shared libraries found in ${ROS_TEST_PREBUILT_LIB_DIR}")
     endif()
 
-    message(STATUS "Installing prebuilt ros_test executables and dependency bundle from ${ROS_TEST_PREBUILT_DIR}")
+    message(STATUS "Installing prebuilt ros_test web_server and dependency bundle from ${ROS_TEST_PREBUILT_DIR}")
     install(PROGRAMS
         ${ROS_TEST_PREBUILT_PROGRAMS}
         DESTINATION lib/${PROJECT_NAME})
@@ -141,35 +133,13 @@ else()
     enable_language(CXX)
 
     find_package(geometry_msgs REQUIRED)
-    find_package(nav_msgs REQUIRED)
     find_package(rclcpp REQUIRED)
     find_package(sensor_msgs REQUIRED)
-    find_package(tf2_ros REQUIRED)
     include(AeroSentinelMySQLHints)
     find_package(Drogon CONFIG REQUIRED)
     find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVUTIL SWSCALE)
     find_package(LibDataChannel CONFIG REQUIRED)
     find_package(OpenCV REQUIRED COMPONENTS core imgcodecs imgproc)
-
-    add_ros_executable(auto_drive src/auto_drive.cpp rclcpp geometry_msgs sensor_msgs)
-    add_ros_executable(map_filter src/map_filter.cpp rclcpp nav_msgs)
-    add_ros_executable(map_monitor src/map_monitor.cpp rclcpp nav_msgs)
-    add_ros_executable(odom_to_tf src/odom_to_tf.cpp rclcpp geometry_msgs nav_msgs tf2_ros)
-
-    if(ROS_TEST_BUILD_NAV2_EXPLORER)
-        find_package(nav2_msgs REQUIRED)
-        find_package(rclcpp_action REQUIRED)
-        find_package(tf2 REQUIRED)
-        add_ros_executable(nav2_waypoint_explorer
-            src/nav2_waypoint_explorer.cpp
-            rclcpp
-            rclcpp_action
-            geometry_msgs
-            nav2_msgs
-            nav_msgs
-            tf2
-            tf2_ros)
-    endif()
 
     add_executable(web_server website/src/main.cc)
     target_link_libraries(web_server

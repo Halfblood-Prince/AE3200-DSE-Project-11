@@ -10,11 +10,15 @@
 
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>rclpy</depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
   <depend>tf2_ros</depend>
+  <exec_depend>action_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>octomap_server</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>

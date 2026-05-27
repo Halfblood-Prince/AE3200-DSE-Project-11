@@ -90,12 +90,16 @@ jobs:
             uuid-dev \
             zlib1g-dev \
             python3-colcon-common-extensions \
+            ros-${ROS_DISTRO}-action-msgs \
             ros-${ROS_DISTRO}-ament-cmake \
             ros-${ROS_DISTRO}-geometry-msgs \
             ros-${ROS_DISTRO}-nav-msgs \
+            ros-${ROS_DISTRO}-nav2-msgs \
             ros-${ROS_DISTRO}-octomap-server \
             ros-${ROS_DISTRO}-rclcpp \
+            ros-${ROS_DISTRO}-rclpy \
             ros-${ROS_DISTRO}-sensor-msgs \
+            ros-${ROS_DISTRO}-sensor-msgs-py \
             ros-${ROS_DISTRO}-tf2-ros
 
       - name: Install libdatachannel
@@ -246,13 +250,7 @@ jobs:
           esac
           mkdir -p "${package_dir}"
           find "${package_dir}" -mindepth 1 -maxdepth 1 ! -name .gitignore -exec rm -rf -- {} +
-          required_executables=(
-            auto_drive
-            map_filter
-            map_monitor
-            odom_to_tf
-            web_server
-          )
+          required_executables=(web_server)
           for executable in "${required_executables[@]}"; do
             cp "${RUNNER_TEMP}/ros_ws/install/ros_test/lib/ros_test/${executable}" "${package_dir}/"
             chmod +x "${package_dir}/${executable}"
@@ -313,12 +311,13 @@ jobs:
           source "/opt/ros/${ROS_DISTRO}/setup.bash"
           set -u
           package_dir="${GITHUB_WORKSPACE}/bin/${{ matrix.bin_dir }}"
-          required_executables=(
+          required_executables=(web_server)
+          python_executables=(
             auto_drive
             map_filter
             map_monitor
+            nav2_waypoint_explorer
             odom_to_tf
-            web_server
           )
 
           for executable in "${required_executables[@]}"; do
@@ -342,6 +341,9 @@ jobs:
           for executable in "${required_executables[@]}"; do
             test -x "${install_dir}/${executable}"
             cmp "${package_dir}/${executable}" "${install_dir}/${executable}"
+          done
+          for executable in "${python_executables[@]}"; do
+            test -x "${install_dir}/${executable}"
           done
           test -d "${install_dir}/lib"
           find "${install_dir}/lib" -type f -name "*.so*" -print -quit | grep -q .
@@ -413,13 +415,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          required_executables=(
-            auto_drive
-            map_filter
-            map_monitor
-            odom_to_tf
-            web_server
-          )
+          required_executables=(web_server)
 
           for package_dir in bin/amd_x64 bin/arm_x64; do
             bin_arch="$(basename "${package_dir}")"
@@ -441,12 +437,7 @@ jobs:
         run: |
           set -euo pipefail
           for package_dir in bin/amd_x64 bin/arm_x64; do
-            chmod +x \
-              "${package_dir}/auto_drive" \
-              "${package_dir}/map_filter" \
-              "${package_dir}/map_monitor" \
-              "${package_dir}/odom_to_tf" \
-              "${package_dir}/web_server"
+            chmod +x "${package_dir}/web_server"
             chmod 0644 "${package_dir}/build-info.env"
           done
           git config user.name "github-actions[bot]"

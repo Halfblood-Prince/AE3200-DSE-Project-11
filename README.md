@@ -1,9 +1,10 @@
 # AeroSentinel ROS 2 Lyrical 3D Mapping
 
 This package launches the AeroSentinel robot stack for ROS 2 Lyrical Luth on
-Ubuntu 26.04. It uses a 3D lidar point cloud and OctoMap for mapping. Real robot
-mode is the default; Gazebo Jetty simulation is enabled explicitly with
-`run:=sim`.
+Ubuntu 26.04. The ROS helper nodes are Python executables; the web dashboard
+remains a Drogon C++ server. The stack uses a 3D lidar point cloud and OctoMap
+for mapping. Real robot mode is the default; Gazebo Jetty simulation is enabled
+explicitly with `run:=sim`.
 
 The simulation path starts Gazebo, bridges sensor data into ROS 2, builds an
 OctoMap from `/points_raw`, and opens RViz with the 3D point cloud and OctoMap
@@ -32,23 +33,27 @@ curl -L -o /tmp/ros2-testing-apt-source.deb "https://github.com/ros-infrastructu
 sudo dpkg -i /tmp/ros2-testing-apt-source.deb
 ```
 
-Install the runtime and build dependencies used by the default prebuilt-binary
-package build:
+Install the runtime and build dependencies used by the default Python-node and
+prebuilt-server package build:
 
 ```bash
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
+  ros-lyrical-action-msgs \
   ros-lyrical-ament-cmake \
   ros-lyrical-geometry-msgs \
   ros-lyrical-nav-msgs \
+  ros-lyrical-nav2-msgs \
   ros-lyrical-octomap-server \
   ros-lyrical-rclcpp \
+  ros-lyrical-rclpy \
   ros-lyrical-ros-gz \
   ros-lyrical-ros-gz-bridge \
   ros-lyrical-ros-gz-sim \
   ros-lyrical-rviz2 \
   ros-lyrical-sensor-msgs \
+  ros-lyrical-sensor-msgs-py \
   ros-lyrical-tf2-ros
 ```
 
@@ -70,8 +75,9 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-By default, CMake installs shipped executables from `bin/<arch>` instead of
-building the C++ nodes locally. Each prebuilt bundle must match:
+By default, CMake installs the Python ROS nodes from `scripts/` and installs the
+shipped Drogon `web_server` executable from `bin/<arch>` instead of compiling
+the server locally. Each prebuilt bundle must match:
 
 ```text
 ROS_DISTRO=lyrical
@@ -83,8 +89,9 @@ missing-binary or stale-binary message.
 
 ## Maintainer Source Builds
 
-Use a source build only when editing C++ code or regenerating the shipped binary
-bundle. Install the native development dependencies first:
+Use a source build only when editing the Drogon web server or regenerating the
+shipped `web_server` binary bundle. Python ROS node changes do not need native
+compilation. Install the native development dependencies first:
 
 ```bash
 sudo apt update
@@ -123,23 +130,30 @@ source /opt/ros/lyrical/setup.bash
 colcon build --cmake-args -DROS_TEST_USE_PREBUILT_BINARIES=OFF
 ```
 
-After changing C++ source, push to `ros_simulation` and let the
+After changing `website/src/main.cc`, push to `ros_simulation` and let the
 `AeroSentinel Linux Binaries` workflow publish refreshed `bin/amd_x64` and
 `bin/arm_x64` bundles back to the branch. Client machines should pull that
 binary commit before running the default `colcon build`.
 
-The required prebuilt executables are:
+The required prebuilt executable is:
+
+```text
+web_server
+```
+
+The Python ROS executables installed from source are:
 
 ```text
 auto_drive
 map_filter
 map_monitor
+nav2_waypoint_explorer
 odom_to_tf
-web_server
 ```
 
-`nav2_waypoint_explorer` is optional and is only built when Nav2 packages are
-available and CMake is configured with `-DROS_TEST_BUILD_NAV2_EXPLORER=ON`.
+`nav2_waypoint_explorer` is installed with the package, but it still requires
+Nav2 runtime packages and is only launched when both `nav2:=true` and
+`explore:=true`.
 
 ## Launch
 
@@ -190,10 +204,10 @@ The launch starts:
 - `octomap_server`, consuming `/points_raw`
 - `map_filter`, republishing non-empty projected maps as `/map_valid`
 - RViz with 3D lidar points and OctoMap voxel displays
-- AeroSentinel C++ dashboard on port `8080`
+- AeroSentinel Drogon C++ dashboard on port `8080`
 - Nav2 servers only when `nav2:=true`
-- Optional `nav2_waypoint_explorer` only when built and when both `nav2:=true`
-  and `explore:=true`
+- Optional Python `nav2_waypoint_explorer` when both `nav2:=true` and
+  `explore:=true`
 
 ## RViz 3D Map
 
