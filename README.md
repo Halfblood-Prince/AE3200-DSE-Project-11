@@ -3,9 +3,8 @@
 
 ## Project Structure
 
-- `.github/`: Repository ownership metadata. CI automation was removed.
 - `config/`: Gazebo GUI and OctoMap parameter files.
-- `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz, and helper nodes.
+- `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
 - `pathfinding/`: Standalone Python A* example code.
 - `resource/`: ROS package index marker used by `ament_python`.
 - `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `robot.sdf`, while `robot.sdf` defines the sliding cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
@@ -30,24 +29,12 @@ Real robot mode is the default. Gazebo simulation is enabled explicitly with
 
 ## Install Dependencies
 
-Enable the ROS 2 Jazzy apt source if it is not already configured:
-
-```bash
-sudo apt update
-sudo apt install -y curl software-properties-common
-sudo add-apt-repository universe
-export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')
-curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
-sudo dpkg -i /tmp/ros2-apt-source.deb
-```
-
 Install the runtime and build dependencies:
 
 ```bash
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
-  python3-setuptools \
   ros-jazzy-ament-python \
   ros-jazzy-geometry-msgs \
   ros-jazzy-nav-msgs \
