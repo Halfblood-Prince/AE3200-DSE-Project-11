@@ -552,7 +552,7 @@ def main(args: list[str] | None = None) -> None:
         try:
             node.get_logger().error(
                 "nav2_waypoint_explorer requires Nav2 Python message bindings. "
-                f"Install the Lyrical Nav2 packages that provide nav2_msgs: {NAV2_IMPORT_ERROR}"
+                f"Install the Jazzy Nav2 packages that provide nav2_msgs: {NAV2_IMPORT_ERROR}"
             )
         finally:
             node.destroy_node()

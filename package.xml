@@ -2,7 +2,7 @@
 <package format="3">
   <name>ros_test</name>
   <version>0.1.0</version>
-  <description>Gazebo Jetty 3D lidar robot simulation with ROS 2 Lyrical Luth OctoMap mapping.</description>
+  <description>Gazebo Harmonic 3D lidar robot simulation with ROS 2 Jazzy Jalisco OctoMap mapping.</description>
   <maintainer email="user@example.com">user</maintainer>
   <license>Apache-2.0</license>
 

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(ros_test
     VERSION 0.1.0
-    DESCRIPTION "Gazebo Jetty 3D lidar robot simulation with ROS 2 Lyrical Luth OctoMap mapping"
+    DESCRIPTION "Gazebo Harmonic 3D lidar robot simulation with ROS 2 Jazzy Jalisco OctoMap mapping"
     LANGUAGES NONE)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -11,14 +11,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/website/cmake")
 
-set(ROS_TEST_TARGET_ROS_DISTRO "lyrical")
-set(ROS_TEST_TARGET_UBUNTU_CODENAME "resolute")
+set(ROS_TEST_TARGET_ROS_DISTRO "jazzy")
+set(ROS_TEST_TARGET_UBUNTU_CODENAME "noble")
 
 find_package(ament_cmake QUIET)
 if(NOT ament_cmake_FOUND)
     message(FATAL_ERROR
-        "ament_cmake was not found. Install ROS 2 Lyrical dependencies on "
-        "Ubuntu 26.04 and source /opt/ros/lyrical/setup.bash before running "
+        "ament_cmake was not found. Install ROS 2 Jazzy dependencies on "
+        "Ubuntu 24.04 and source /opt/ros/jazzy/setup.bash before running "
         "colcon build.")
 endif()
 

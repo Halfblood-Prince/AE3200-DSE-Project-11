@@ -11,11 +11,11 @@ The normal ROS package build does not compile this app; it installs the shipped
 steps only when regenerating the shipped binaries or developing the web server
 itself.
 
-Install ROS 2, Drogon, and OpenCV development dependencies. On Ubuntu 26.04 with ROS 2 Lyrical:
+Install ROS 2, Drogon, and OpenCV development dependencies. On Ubuntu 24.04 with ROS 2 Jazzy:
 
 ```bash
 sudo apt update
-sudo apt install -y cmake g++ libavcodec-dev libavutil-dev libdrogon-dev libopencv-dev libswscale-dev libx264-dev ros-lyrical-ament-cmake ros-lyrical-rclcpp ros-lyrical-geometry-msgs ros-lyrical-sensor-msgs
+sudo apt install -y cmake g++ libavcodec-dev libavutil-dev libdrogon-dev libopencv-dev libswscale-dev libx264-dev ros-jazzy-ament-cmake ros-jazzy-rclcpp ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs
 ```
 
 Install libdatachannel from your distro, vcpkg, or source package as well; CMake expects the `LibDataChannel` package to be findable.
@@ -23,7 +23,7 @@ Install libdatachannel from your distro, vcpkg, or source package as well; CMake
 From this `website` directory:
 
 ```bash
-source /opt/ros/lyrical/setup.bash
+source /opt/ros/jazzy/setup.bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build --config RelWithDebInfo
 ```

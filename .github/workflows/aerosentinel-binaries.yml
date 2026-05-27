@@ -18,19 +18,19 @@ concurrency:
 env:
   BUILD_TYPE: RelWithDebInfo
   PUBLISH_BRANCH: ros_simulation
-  ROS_DISTRO: lyrical
-  TARGET_UBUNTU_CODENAME: resolute
+  ROS_DISTRO: jazzy
+  TARGET_UBUNTU_CODENAME: noble
 
 jobs:
   build:
-    name: Build Ubuntu 26.04 ${{ matrix.bin_dir }}
+    name: Build Ubuntu 24.04 ${{ matrix.bin_dir }}
     runs-on: ${{ matrix.runner }}
     container:
-      image: ubuntu:26.04
+      image: ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:
-        # The host runner supplies CPU architecture; the job container supplies Ubuntu 26.04.
+        # The host runner supplies CPU architecture; the job container supplies Ubuntu 24.04.
         include:
           - bin_dir: amd_x64
             runner: ubuntu-24.04
@@ -55,9 +55,9 @@ jobs:
             exit 1
           fi
           ROS_APT_SOURCE_VERSION="$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')"
-          curl -L -o /tmp/ros2-testing-apt-source.deb \
-            "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.${ubuntu_codename}_all.deb"
-          dpkg -i /tmp/ros2-testing-apt-source.deb
+          curl -L -o /tmp/ros2-apt-source.deb \
+            "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.${ubuntu_codename}_all.deb"
+          dpkg -i /tmp/ros2-apt-source.deb
 
       - name: Install package dependencies
         shell: bash
@@ -96,6 +96,10 @@ jobs:
             ros-${ROS_DISTRO}-octomap-server \
             ros-${ROS_DISTRO}-rclcpp \
             ros-${ROS_DISTRO}-rclpy \
+            ros-${ROS_DISTRO}-ros-gz \
+            ros-${ROS_DISTRO}-ros-gz-bridge \
+            ros-${ROS_DISTRO}-ros-gz-sim \
+            ros-${ROS_DISTRO}-rviz2 \
             ros-${ROS_DISTRO}-sensor-msgs \
             ros-${ROS_DISTRO}-sensor-msgs-py \
             ros-${ROS_DISTRO}-tf2-ros

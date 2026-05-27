@@ -1,9 +1,9 @@
-# AeroSentinel ROS 2 Lyrical 3D Mapping
+# AeroSentinel ROS 2 Jazzy 3D Mapping
 
-This package launches the AeroSentinel robot stack for ROS 2 Lyrical Luth on
-Ubuntu 26.04. The ROS helper nodes are Python executables; the web dashboard
+This package launches the AeroSentinel robot stack for ROS 2 Jazzy Jalisco on
+Ubuntu 24.04. The ROS helper nodes are Python executables; the web dashboard
 remains a Drogon C++ server. The stack uses a 3D lidar point cloud and OctoMap
-for mapping. Real robot mode is the default; Gazebo Jetty simulation is enabled
+for mapping. Real robot mode is the default; Gazebo Harmonic simulation is enabled
 explicitly with `run:=sim`.
 
 The simulation path starts Gazebo, bridges sensor data into ROS 2, builds an
@@ -13,24 +13,24 @@ other navigation internals, but it is not shown in RViz by default.
 
 ## Requirements
 
-- Ubuntu 26.04, codename `resolute`
-- ROS 2 Lyrical Luth
-- Gazebo Jetty packages from the ROS 2 Lyrical apt repository
+- Ubuntu 24.04, codename `noble`
+- ROS 2 Jazzy Jalisco
+- Gazebo Harmonic packages from the ROS 2 Jazzy apt repository
 - A supported CPU architecture:
   - `amd_x64`
   - `arm_x64`
 
 ## Install Dependencies
 
-Enable the ROS 2 Lyrical apt source if it is not already configured:
+Enable the ROS 2 Jazzy apt source if it is not already configured:
 
 ```bash
 sudo apt update
 sudo apt install -y curl software-properties-common
 sudo add-apt-repository universe
 export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F'"' '{print $4}')
-curl -L -o /tmp/ros2-testing-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-testing-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
-sudo dpkg -i /tmp/ros2-testing-apt-source.deb
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-apt-source.deb
 ```
 
 Install the runtime and build dependencies used by the default Python-node and
@@ -40,28 +40,28 @@ prebuilt-server package build:
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
-  ros-lyrical-ament-cmake \
-  ros-lyrical-geometry-msgs \
-  ros-lyrical-nav-msgs \
-  ros-lyrical-octomap-server \
-  ros-lyrical-rclcpp \
-  ros-lyrical-rclpy \
-  ros-lyrical-ros-gz \
-  ros-lyrical-ros-gz-bridge \
-  ros-lyrical-ros-gz-sim \
-  ros-lyrical-rviz2 \
-  ros-lyrical-sensor-msgs \
-  ros-lyrical-sensor-msgs-py \
-  ros-lyrical-tf2-ros
+  ros-jazzy-ament-cmake \
+  ros-jazzy-geometry-msgs \
+  ros-jazzy-nav-msgs \
+  ros-jazzy-octomap-server \
+  ros-jazzy-rclcpp \
+  ros-jazzy-rclpy \
+  ros-jazzy-ros-gz \
+  ros-jazzy-ros-gz-bridge \
+  ros-jazzy-ros-gz-sim \
+  ros-jazzy-rviz2 \
+  ros-jazzy-sensor-msgs \
+  ros-jazzy-sensor-msgs-py \
+  ros-jazzy-tf2-ros
 ```
 
 Nav2 is optional. The launch file keeps Nav2 disabled by default. Install the
-Lyrical Nav2 packages separately before using `nav2:=true` or `explore:=true`;
+Jazzy Nav2 packages separately before using `nav2:=true` or `explore:=true`;
 the explorer also needs the package that provides Python `nav2_msgs` bindings.
 
 ## Build
 
-Clone the `ros_simulation` branch into a ROS 2 workspace, source Lyrical, and
+Clone the `ros_simulation` branch into a ROS 2 workspace, source Jazzy, and
 build from the workspace root:
 
 ```bash
@@ -69,7 +69,7 @@ mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 git clone --branch ros_simulation https://github.com/halfblood-prince/ae3200-dse-project-11.git
 cd ~/ros2_ws
-source /opt/ros/lyrical/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -79,8 +79,8 @@ shipped Drogon `web_server` executable from `bin/<arch>` instead of compiling
 the server locally. Each prebuilt bundle must match:
 
 ```text
-ROS_DISTRO=lyrical
-UBUNTU_CODENAME=resolute
+ROS_DISTRO=jazzy
+UBUNTU_CODENAME=noble
 ```
 
 If the binary bundle is missing or stale, configuration stops with a clear
@@ -125,7 +125,7 @@ Local maintainers can install it from their distro, vcpkg, or source.
 Build the package from source with:
 
 ```bash
-source /opt/ros/lyrical/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --cmake-args -DROS_TEST_USE_PREBUILT_BINARIES=OFF
 ```
 
@@ -189,7 +189,7 @@ ros2 launch ros_test gazebo_slam.launch.py run:=sim
 
 The launch starts:
 
-- Gazebo Jetty with `robot.sdf` in `run:=sim`
+- Gazebo Harmonic with `robot.sdf` in `run:=sim`
 - Gazebo Teleop GUI in `run:=sim`, unless `gazebo_gui:=false`
 - ROS-Gazebo bridges for `/clock`, `/points_raw`, `/front_camera/image`,
   `/imu`, `/odom`, and `/cmd_vel` in `run:=sim`
