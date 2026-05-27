@@ -177,7 +177,7 @@ ros2 launch ros_test gazebo_slam.launch.py run:=sim
 The launch starts:
 
 - Gazebo Jetty with `robot.sdf` in `run:=sim`
-- Gazebo Teleop GUI in `run:=sim`
+- Gazebo Teleop GUI in `run:=sim`, unless `gazebo_gui:=false`
 - ROS-Gazebo bridges for `/clock`, `/points_raw`, `/front_camera/image`,
   `/imu`, `/odom`, and `/cmd_vel` in `run:=sim`
 - A 1920x1080 front camera at 60 FPS in `run:=sim`
@@ -260,12 +260,27 @@ Disable RViz:
 ros2 launch ros_test gazebo_slam.launch.py rviz:=false
 ```
 
+Run Gazebo headless when the GUI cannot create an OpenGL window:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false
+```
+
+On WSL, remote desktops, and machines without a working OpenGL display, run the
+simulator headless and disable RViz until the display stack is fixed:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false rviz:=false
+```
+
 Disable the web dashboard or change its port:
 
 ```bash
 ros2 launch ros_test gazebo_slam.launch.py web:=false
 ros2 launch ros_test gazebo_slam.launch.py web_port:=8081
 ```
+
+Use `web_port:=8081` if another process is already using port `8080`.
 
 Bind the dashboard to localhost only:
 
@@ -324,3 +339,29 @@ closure. Drive smoothly for the cleanest 3D map.
 The projected 2D map is derived from OctoMap using the height and projection
 settings in [config/octomap_server.yaml](config/octomap_server.yaml). It is kept
 for navigation compatibility, not as the primary RViz visualization.
+
+## Troubleshooting
+
+If `web_server` reports `Address already in use` on `0.0.0.0:8080`, either stop
+the old process or launch on another port:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim web_port:=8081
+```
+
+If Gazebo or RViz reports GLX, EGL, Ogre, `currentGLContext`, or
+`Invalid parentWindowHandle` errors, the ROS graph is not the problem. The
+machine cannot create a working OpenGL render window. Start with:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false rviz:=false web_port:=8081
+```
+
+Then fix the display stack before re-enabling RViz. On WSL, make sure WSLg and
+GPU drivers are working. For a quick software-rendering attempt, try:
+
+```bash
+export LIBGL_ALWAYS_SOFTWARE=1
+export QT_XCB_GL_INTEGRATION=none
+ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false web_port:=8081
+```

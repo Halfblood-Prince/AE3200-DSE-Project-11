@@ -49,6 +49,31 @@ class AllTrue(Substitution):
         return "true"
 
 
+class GazeboArgs(Substitution):
+    """Build gz sim arguments with optional GUI disabled."""
+
+    def __init__(self, gz_args, world, gui_config, gazebo_gui):
+        super().__init__()
+        self._gz_args = gz_args
+        self._world = world
+        self._gui_config = gui_config
+        self._gazebo_gui = gazebo_gui
+
+    def describe(self):
+        return "Gazebo command-line arguments"
+
+    def perform(self, context):
+        gz_args = str(self._gz_args.perform(context) or "").strip()
+        world = str(self._world.perform(context) or "").strip()
+        gui_enabled = _launch_bool(self._gazebo_gui.perform(context))
+
+        if gui_enabled:
+            gui_config = str(self._gui_config.perform(context) or "").strip()
+            return f"{gz_args} {world} --gui-config {gui_config}".strip()
+
+        return f"{gz_args} -s {world}".strip()
+
+
 def generate_launch_description():
     pkg_share = FindPackageShare("ros_test")
     run_mode = LaunchConfiguration("run")
@@ -56,6 +81,7 @@ def generate_launch_description():
     world = LaunchConfiguration("world")
     gui_config = LaunchConfiguration("gui_config")
     gz_args = LaunchConfiguration("gz_args")
+    gazebo_gui_enabled = LaunchConfiguration("gazebo_gui")
     auto_drive_enabled = LaunchConfiguration("auto_drive")
     odom_tf_enabled = LaunchConfiguration("odom_tf")
     lidar_tf_enabled = LaunchConfiguration("lidar_tf")
@@ -80,13 +106,14 @@ def generate_launch_description():
     octomap_params = PathJoinSubstitution([pkg_share, "config", "octomap_server.yaml"])
     nav2_params = PathJoinSubstitution([pkg_share, "config", "nav2_params.yaml"])
     rviz_config = PathJoinSubstitution([pkg_share, "rviz", "slam.rviz"])
+    gazebo_args = GazeboArgs(gz_args, world, gui_config, gazebo_gui_enabled)
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"])
         ),
         launch_arguments={
-            "gz_args": [gz_args, " ", world, " --gui-config ", gui_config],
+            "gz_args": gazebo_args,
         }.items(),
         condition=IfCondition(is_sim),
     )
@@ -393,6 +420,11 @@ def generate_launch_description():
                 "gz_args",
                 default_value="-r",
                 description="Arguments passed to gz sim before the world path.",
+            ),
+            DeclareLaunchArgument(
+                "gazebo_gui",
+                default_value="true",
+                description="Set false to run Gazebo server-only without the GUI.",
             ),
             DeclareLaunchArgument(
                 "auto_drive",
