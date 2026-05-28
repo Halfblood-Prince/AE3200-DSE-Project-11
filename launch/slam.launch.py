@@ -72,6 +72,26 @@ class GazeboArgs(Substitution):
         return f"{gz_args} -s {world}".strip()
 
 
+class SimCameraEnabled(Substitution):
+    """Return true when simulation mode and the camera flag are both enabled."""
+
+    def __init__(self, is_sim, camera_enabled):
+        """Store the substitutions needed to gate the Gazebo camera bridge."""
+        super().__init__()
+        self._is_sim = is_sim
+        self._camera_enabled = camera_enabled
+
+    def describe(self):
+        """Describe this substitution in launch diagnostics."""
+        return "camera bridge enabled in simulation"
+
+    def perform(self, context):
+        """Evaluate whether the simulation camera bridge should run."""
+        enabled = _launch_bool(self._is_sim.perform(context))
+        enabled = enabled and _launch_bool(self._camera_enabled.perform(context))
+        return "true" if enabled else "false"
+
+
 def generate_launch_description():
     """Create the full launch graph for real robot and simulation modes."""
     # Launch configurations keep every user-facing option in one place.
@@ -91,6 +111,7 @@ def generate_launch_description():
 
     # Derived substitutions combine simple launch flags into reusable conditions.
     is_sim = SimulationMode(run_mode, rum_mode)
+    camera_in_sim = SimCameraEnabled(is_sim, camera_enabled)
     use_sim_time = ParameterValue(is_sim, value_type=bool)
 
     # Package-relative assets are resolved after install by FindPackageShare.
@@ -156,7 +177,7 @@ def generate_launch_description():
         condition=IfCondition(is_sim),
     )
 
-    # Camera images are high-bandwidth, so bridge them only when requested.
+    # Camera images run by default in simulation but are not bridged in real mode.
     camera_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -165,7 +186,7 @@ def generate_launch_description():
         arguments=[
             "/front_camera/image@sensor_msgs/msg/Image[gz.msgs.Image",
         ],
-        condition=IfCondition(camera_enabled),
+        condition=IfCondition(camera_in_sim),
     )
 
     # The 3D lidar needs a PointCloudPacked bridge plus a stable lidar frame id.
@@ -349,8 +370,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "camera",
-                default_value="false",
-                description="Set true to bridge the high-bandwidth front camera image topic.",
+                default_value="true",
+                description="Set false to disable the simulated front camera image bridge.",
             ),
             DeclareLaunchArgument(
                 "odom_tf",

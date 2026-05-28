@@ -49,7 +49,7 @@ def test_launch_defaults_keep_real_mode_safe_and_sim_opt_in():
     assert launch_argument_default(launch_text, "run") == "real"
     assert launch_argument_default(launch_text, "rum") == ""
     assert launch_argument_default(launch_text, "gazebo_gui") == "true"
-    assert launch_argument_default(launch_text, "camera") == "false"
+    assert launch_argument_default(launch_text, "camera") == "true"
     assert launch_argument_default(launch_text, "odom_tf") == "true"
     assert launch_argument_default(launch_text, "lidar_tf") == "true"
     assert launch_argument_default(launch_text, "mapper") == "true"
@@ -81,6 +81,7 @@ def test_system_topic_inventory_is_documented_and_backed_by_sources():
     launch_text = read_asset("launch/slam.launch.py")
     robot_text = read_asset("robot/robot.sdf")
     octomap_text = read_asset("config/octomap_server.yaml")
+    rviz_text = read_asset("rviz/slam.rviz")
 
     expected_topics = [
         "/points_raw",
@@ -93,6 +94,7 @@ def test_system_topic_inventory_is_documented_and_backed_by_sources():
         "/octomap_full",
         "/map",
         "/map_valid",
+        "/astar_path",
         "/cmd_vel",
     ]
     for topic in expected_topics:
@@ -102,6 +104,7 @@ def test_system_topic_inventory_is_documented_and_backed_by_sources():
         (launch_text, ["/points_filtered", "/map_valid", "/cmd_vel"]),
         (robot_text, ["/points_raw", "/front_camera/image", "/imu", "/odom", "/cmd_vel"]),
         (octomap_text, ["frame_id: map", "base_frame_id: base_link"]),
+        (rviz_text, ["/astar_path"]),
     ):
         for topic in topics:
             assert topic in source

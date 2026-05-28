@@ -18,7 +18,7 @@ setup(
         (f"share/{package_name}/robot", glob("robot/*")),
         (f"share/{package_name}/rviz", glob("rviz/*")),
     ],
-    install_requires=["setuptools"],
+    install_requires=["setuptools", "numpy"],
     extras_require={"test": ["pytest", "pytest-cov"]},
     zip_safe=True,
     maintainer="user",
@@ -28,6 +28,7 @@ setup(
     entry_points={
         "console_scripts": [
             "cloud_filter = ros_test.cloud_filter:main",
+            "astar_path_publisher = ros_test.astar_path_publisher:main",
             "map_filter = ros_test.map_filter:main",
             "map_monitor = ros_test.map_monitor:main",
             "odom_to_tf = ros_test.odom_to_tf:main",

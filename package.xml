@@ -14,6 +14,7 @@
   <!-- Message/runtime dependencies used by the Python nodes and launch bridges. -->
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-setuptools</exec_depend>
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>

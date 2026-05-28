@@ -1,4 +1,4 @@
-"""Subsystem contract tests for mapping, motion, and optional camera plumbing."""
+"""Subsystem contract tests for mapping, motion, and camera plumbing."""
 
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -62,21 +62,24 @@ def test_motion_subsystem_uses_3d_velocity_and_odometry():
     assert odometry.findtext("dimensions") == "3"
 
 
-def test_camera_subsystem_is_optional_and_isolated():
-    """The high-bandwidth camera bridge should stay out of the default bridge."""
+def test_camera_subsystem_runs_by_default_only_in_sim():
+    """The camera bridge should be default-on in sim without affecting the base bridge."""
     model = robot_model()
     launch_text = read_asset("launch/slam.launch.py")
 
-    base_bridge_block = launch_text.split("# Camera images are high-bandwidth", maxsplit=1)[0]
+    base_bridge_block = launch_text.split("# Camera images run by default", maxsplit=1)[0]
     camera = model.find(".//sensor[@name='front_camera']")
 
     assert camera is not None
     assert camera.findtext("topic") == "/front_camera/image"
-    assert camera.findtext("always_on") == "0"
+    assert camera.findtext("camera/image/width") == "960"
+    assert camera.findtext("camera/image/height") == "540"
+    assert camera.findtext("always_on") == "1"
     assert "/front_camera/image" not in base_bridge_block
     assert 'LaunchConfiguration("camera")' in launch_text
+    assert "camera_in_sim = SimCameraEnabled(is_sim, camera_enabled)" in launch_text
     assert 'name="ros_gz_camera_bridge"' in launch_text
-    assert "condition=IfCondition(camera_enabled)" in launch_text
+    assert "condition=IfCondition(camera_in_sim)" in launch_text
 
 
 def test_helper_nodes_are_installed_and_launched_once():

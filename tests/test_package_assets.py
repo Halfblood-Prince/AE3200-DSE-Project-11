@@ -72,22 +72,38 @@ def test_octomap_disables_redundant_ground_segmentation():
     assert "ground_filter:" not in text
 
 
-def test_camera_bridge_is_opt_in_to_limit_transport_load():
-    """High-bandwidth camera images should not be bridged by default."""
+def test_camera_bridge_runs_in_sim_at_reduced_resolution():
+    """Simulation should start the front camera bridge at 960 x 540."""
     launch_text = Path("launch/slam.launch.py").read_text()
     robot_text = Path("robot/robot.sdf").read_text()
 
     assert 'LaunchConfiguration("camera")' in launch_text
     assert '"camera",' in launch_text
-    assert 'default_value="false"' in launch_text
+    assert 'default_value="true"' in launch_text
     assert 'name="ros_gz_camera_bridge"' in launch_text
+    assert "condition=IfCondition(camera_in_sim)" in launch_text
     assert "<update_rate>30</update_rate>" in robot_text
-    assert "<always_on>0</always_on>" in robot_text
+    assert "<width>960</width>" in robot_text
+    assert "<height>540</height>" in robot_text
+    assert "<always_on>1</always_on>" in robot_text
 
 
 def test_setup_entrypoints_match_nodes():
     """setup.py should expose all installed ROS helper node entrypoints."""
     text = Path("setup.py").read_text()
 
-    for entrypoint in ("cloud_filter", "map_filter", "map_monitor", "odom_to_tf"):
+    for entrypoint in ("astar_path_publisher", "cloud_filter", "map_filter", "map_monitor", "odom_to_tf"):
         assert f"{entrypoint} = ros_test.{entrypoint}:main" in text
+
+
+def test_saved_octomap_planning_assets_are_documented_for_rviz():
+    """The .bt-to-A* helper should be installable and visible in RViz docs/assets."""
+    readme_text = Path("README.md").read_text()
+    rviz_text = Path("rviz/slam.rviz").read_text()
+    package_text = Path("package.xml").read_text()
+
+    assert "bt_file_to_numpy_grid" in Path("pathfinding/octomap_grid.py").read_text()
+    assert "astar_path_publisher" in readme_text
+    assert ".bt -> NumPy grid -> A* -> nav_msgs/Path" in readme_text
+    assert "Value: /astar_path" in rviz_text
+    assert "<exec_depend>python3-numpy</exec_depend>" in package_text

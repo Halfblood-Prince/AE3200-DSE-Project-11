@@ -80,7 +80,7 @@
         <visualize>true</visualize>
       </sensor>
 
-      <!-- Front RGB camera kept at the existing pose, resolution, and topic. -->
+      <!-- Front RGB camera kept at the existing pose and topic. -->
       <sensor name="front_camera" type="camera">
         <pose>0.68 0 0.36 0 0 0</pose>
         <topic>/front_camera/image</topic>
@@ -88,8 +88,8 @@
         <camera>
           <horizontal_fov>1.3962634</horizontal_fov>
           <image>
-            <width>1920</width>
-            <height>1080</height>
+            <width>960</width>
+            <height>540</height>
             <format>R8G8B8</format>
           </image>
           <clip>
@@ -97,7 +97,7 @@
             <far>100.0</far>
           </clip>
         </camera>
-        <always_on>0</always_on>
+        <always_on>1</always_on>
         <visualize>true</visualize>
       </sensor>
 

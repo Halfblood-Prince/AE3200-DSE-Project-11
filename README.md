@@ -13,7 +13,7 @@
 - `.github/`: GitHub Actions workflows for CodeQL, unit, subsystem, system, edge-case, and coverage checks.
 - `config/`: Gazebo GUI and OctoMap parameter files.
 - `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
-- `pathfinding/`: Standalone Python A* example code.
+- `pathfinding/`: Standalone Python A* and OctoMap-to-NumPy grid helpers.
 - `resource/`: ROS package index marker used by `ament_python`.
 - `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `model://robot`; `model.config` resolves that model to `robot.sdf`, which defines the hover-capable cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
 - `ros_test/`: Python package containing the ROS helper node implementations installed by `setup.py`.
@@ -43,6 +43,7 @@ Install the runtime and build dependencies:
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
+  python3-numpy \
   ros-jazzy-geometry-msgs \
   ros-jazzy-nav-msgs \
   ros-jazzy-octomap-server \
@@ -73,6 +74,7 @@ source install/setup.bash
 The installed Python ROS executables are:
 
 ```text
+astar_path_publisher
 cloud_filter
 map_filter
 map_monitor
@@ -135,7 +137,7 @@ The launch starts:
 - Gazebo Teleop GUI in `run:=sim`, unless `gazebo_gui:=false`
 - The hover-capable cuboid robot from `robot/robot.sdf`
 - ROS-Gazebo bridges for `/clock`, `/points_raw`, `/imu`, `/odom`, and `/cmd_vel`
-- An optional 1920x1080 front camera at 30 FPS, bridged with `camera:=true`
+- A 960x540 front camera at 30 FPS, bridged by default in `run:=sim`
 - A 1024 x 16 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
 - `cloud_filter`, republishing self-filtered lidar points as `/points_filtered`
 - `odom_to_tf`, publishing `odom -> base_link`, unless `odom_tf:=false`
@@ -166,6 +168,9 @@ OctoMap's PCL ground-plane segmentation is disabled because the filtered,
 hover-capable scan often does not contain a stable ground plane to fit. Floor
 suppression is handled by `/points_filtered` and the OctoMap height limits
 instead.
+
+The RViz layout also contains an `A* Path` display on `/astar_path`. It stays
+empty until a saved-map planning node publishes a path.
 
 The 2D projected map topics `/map` and `/map_valid` are intentionally not shown
 in RViz by default. They remain available for map monitoring and other custom
@@ -199,10 +204,10 @@ Disable RViz:
 ros2 launch ros_test slam.launch.py rviz:=false
 ```
 
-Bridge the front camera image topic:
+Disable the simulated front camera image bridge:
 
 ```bash
-ros2 launch ros_test slam.launch.py run:=sim camera:=true
+ros2 launch ros_test slam.launch.py run:=sim camera:=false
 ```
 
 Run Gazebo headless when the GUI cannot create an OpenGL window:
@@ -223,7 +228,7 @@ ros2 launch ros_test slam.launch.py run:=sim gazebo_gui:=false rviz:=false
 ```text
 /points_raw               sensor_msgs/msg/PointCloud2 from the 3D lidar
 /points_filtered          sensor_msgs/msg/PointCloud2 after self/floor filtering
-/front_camera/image       sensor_msgs/msg/Image camera feed, if camera:=true
+/front_camera/image       sensor_msgs/msg/Image camera feed, bridged by default in run:=sim
 /imu                      sensor_msgs/msg/Imu from Gazebo
 /odom                     nav_msgs/msg/Odometry from Gazebo
 /occupied_cells_vis_array visualization_msgs/msg/MarkerArray from OctoMap
@@ -231,6 +236,7 @@ ros2 launch ros_test slam.launch.py run:=sim gazebo_gui:=false rviz:=false
 /octomap_full             octomap_msgs/msg/Octomap
 /map                      nav_msgs/msg/OccupancyGrid projected from OctoMap
 /map_valid                nav_msgs/msg/OccupancyGrid after empty-map filtering
+/astar_path               nav_msgs/msg/Path planned through a saved .bt OctoMap
 /cmd_vel                  geometry_msgs/msg/Twist
 ```
 
@@ -247,3 +253,30 @@ visualization.
 For full 3D consumers, use `/octomap_full` or `/octomap_binary`. The RViz voxel
 display uses `/occupied_cells_vis_array`, which is only the visualization view of
 the OctoMap.
+
+## Save and Plan
+
+After mapping the full area, save the binary OctoMap from the live
+`octomap_server`:
+
+```bash
+mkdir -p ~/maps
+ros2 run octomap_server octomap_saver_node --ros-args \
+  -p octomap_path:=$HOME/maps/aerosentinel.bt
+```
+
+Plan with the saved `.bt` file and publish the resulting path to RViz:
+
+```bash
+ros2 run ros_test astar_path_publisher --ros-args \
+  -p bt_path:=$HOME/maps/aerosentinel.bt \
+  -p start_xyz:="[0.0, 0.0, 0.5]" \
+  -p goal_xyz:="[3.0, 2.0, 0.5]"
+```
+
+The helper converts `.bt -> NumPy grid -> A* -> nav_msgs/Path`. Coordinates are
+world-frame meters in the `map` frame, and the dense grid uses `0` for free and
+`1` for occupied. Unknown space is treated as occupied by default; set
+`unknown_is_occupied:=false` only when you intentionally want the planner to
+cross unmapped space. Use `planning_resolution:=0.2` or coarser when a large map
+would create a very large dense grid.

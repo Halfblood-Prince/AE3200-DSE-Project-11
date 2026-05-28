@@ -3,16 +3,19 @@
 from types import SimpleNamespace
 import struct
 
+import numpy as np
 import pytest
 
 pytest.importorskip("rclpy")
+pytest.importorskip("builtin_interfaces.msg")
 pytest.importorskip("nav_msgs.msg")
 pytest.importorskip("sensor_msgs.msg")
 
+from builtin_interfaces.msg import Time
 from nav_msgs.msg import OccupancyGrid
 from sensor_msgs.msg import PointCloud2, PointField
 
-from ros_test import cloud_filter, map_filter, map_monitor, odom_to_tf
+from ros_test import astar_path_publisher, cloud_filter, map_filter, map_monitor, odom_to_tf
 
 
 class RecordingLogger:
@@ -76,13 +79,19 @@ def patch_node_methods(monkeypatch):
         self._timers.append(timer)
         return timer
 
-    for module in (cloud_filter, map_filter, map_monitor, odom_to_tf):
+    def get_clock(self):
+        return SimpleNamespace(
+            now=lambda: SimpleNamespace(to_msg=lambda: Time(sec=0, nanosec=0))
+        )
+
+    for module in (astar_path_publisher, cloud_filter, map_filter, map_monitor, odom_to_tf):
         monkeypatch.setattr(module.Node, "__init__", node_init)
         monkeypatch.setattr(module.Node, "declare_parameter", declare_parameter)
         monkeypatch.setattr(module.Node, "get_parameter", get_parameter)
         monkeypatch.setattr(module.Node, "create_publisher", create_publisher)
         monkeypatch.setattr(module.Node, "create_subscription", create_subscription)
         monkeypatch.setattr(module.Node, "create_timer", create_timer)
+        monkeypatch.setattr(module.Node, "get_clock", get_clock)
         monkeypatch.setattr(module.Node, "get_logger", lambda self: self._logger)
 
 
@@ -126,11 +135,200 @@ def test_transient_map_qos_helpers_match():
     """Map helper nodes should use the same latched QoS settings."""
     filter_qos = map_filter.transient_map_qos()
     monitor_qos = map_monitor.transient_map_qos()
+    path_qos = astar_path_publisher.transient_path_qos()
 
     assert filter_qos.depth == 1
     assert monitor_qos.depth == 1
+    assert path_qos.depth == 1
     assert filter_qos.durability == monitor_qos.durability
     assert filter_qos.reliability == monitor_qos.reliability
+    assert path_qos.durability == filter_qos.durability
+    assert path_qos.reliability == filter_qos.reliability
+
+
+def test_astar_path_publisher_initializes_configured_topic(monkeypatch):
+    """The saved-map planner should publish a latched nav_msgs/Path for RViz."""
+    patch_node_methods(monkeypatch)
+
+    node = astar_path_publisher.AstarPathPublisher()
+
+    assert node._node_name == "astar_path_publisher"
+    assert node._publishers[0][1] == "/astar_path"
+    assert node._timers[0].period == 1.0
+    node._publish_path()
+    assert node._publisher.published == []
+
+
+def test_astar_path_message_uses_voxel_centers():
+    """A* grid indices should be converted back into map-frame voxel centers."""
+    grid = astar_path_publisher.OctomapGrid(
+        grid=np.zeros((1, 1, 2), dtype=np.uint8),
+        origin=(1.0, 2.0, 3.0),
+        resolution=0.5,
+        occupied_leaves=0,
+        free_leaves=2,
+    )
+    stamp = Time(sec=7, nanosec=5)
+
+    msg = astar_path_publisher.path_to_message(grid, [(0, 0, 0), (1, 0, 0)], "map", stamp)
+
+    assert msg.header.frame_id == "map"
+    assert msg.header.stamp == stamp
+    assert len(msg.poses) == 2
+    assert msg.poses[0].pose.position.x == 1.25
+    assert msg.poses[0].pose.position.y == 2.25
+    assert msg.poses[0].pose.position.z == 3.25
+    assert msg.poses[1].pose.position.x == 1.75
+    assert all(pose.pose.orientation.w == 1.0 for pose in msg.poses)
+
+
+def test_astar_path_message_allows_empty_paths():
+    """No-route results should still publish an empty Path in the right frame."""
+    grid = astar_path_publisher.OctomapGrid(
+        grid=np.zeros((1, 1, 1), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=0,
+        free_leaves=1,
+    )
+    stamp = Time(sec=1, nanosec=0)
+
+    msg = astar_path_publisher.path_to_message(grid, None, "map", stamp)
+
+    assert msg.header.frame_id == "map"
+    assert msg.header.stamp == stamp
+    assert msg.poses == []
+
+
+def test_prepare_planning_grid_frees_start_and_goal_only():
+    """Start and goal should be usable even if the saved map marks them occupied."""
+    grid = astar_path_publisher.OctomapGrid(
+        grid=np.ones((1, 1, 3), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=3,
+        free_leaves=0,
+    )
+
+    planning_grid = astar_path_publisher.prepare_planning_grid(grid, (0, 0, 0), (2, 0, 0))
+
+    np.testing.assert_array_equal(planning_grid, np.array([[[0, 1, 0]]], dtype=np.uint8))
+    assert grid.grid[0, 0, 0] == 1
+
+
+def test_prepare_planning_grid_rejects_out_of_bounds_goal():
+    """Bad world-to-grid conversions should fail before A* starts."""
+    grid = astar_path_publisher.OctomapGrid(
+        grid=np.zeros((1, 1, 1), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=0,
+        free_leaves=1,
+    )
+
+    with pytest.raises(ValueError, match="goal index"):
+        astar_path_publisher.prepare_planning_grid(grid, (0, 0, 0), (1, 0, 0))
+
+
+def test_parse_xyz_requires_three_values():
+    """List parameters for start and goal should be exactly x/y/z."""
+    assert astar_path_publisher.parse_xyz([1, 2, 3], "start_xyz") == (1.0, 2.0, 3.0)
+    with pytest.raises(ValueError, match="exactly three"):
+        astar_path_publisher.parse_xyz([1, 2], "goal_xyz")
+
+
+def test_plan_path_from_bt_delegates_to_converter_and_astar(monkeypatch):
+    """The planning helper should convert world points to A* grid indices."""
+    octomap_grid = astar_path_publisher.OctomapGrid(
+        grid=np.ones((1, 1, 3), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=3,
+        free_leaves=0,
+    )
+    calls = {}
+
+    def fake_converter(bt_path, **kwargs):
+        calls["converter"] = (bt_path, kwargs)
+        return octomap_grid
+
+    def fake_astar(grid, start, goal):
+        calls["astar"] = (grid.copy(), start, goal)
+        return [start, goal]
+
+    monkeypatch.setattr(astar_path_publisher, "bt_file_to_numpy_grid", fake_converter)
+    monkeypatch.setattr(astar_path_publisher, "astar", fake_astar)
+
+    result = astar_path_publisher.plan_path_from_bt(
+        "map.bt",
+        (0.5, 0.5, 0.5),
+        (2.5, 0.5, 0.5),
+        planning_resolution=0.5,
+        padding=2.0,
+        unknown_is_occupied=False,
+    )
+
+    assert result[0] is octomap_grid
+    assert result[1] == [(0, 0, 0), (2, 0, 0)]
+    assert result[2:] == ((0, 0, 0), (2, 0, 0))
+    assert calls["converter"][0] == "map.bt"
+    assert calls["converter"][1]["include_points"] == ((0.5, 0.5, 0.5), (2.5, 0.5, 0.5))
+    np.testing.assert_array_equal(calls["astar"][0], np.array([[[0, 1, 0]]], dtype=np.uint8))
+
+
+def test_astar_path_publisher_plans_and_republishes(monkeypatch):
+    """A successful plan should be cached and republished for late RViz subscribers."""
+    patch_node_methods(monkeypatch)
+    octomap_grid = astar_path_publisher.OctomapGrid(
+        grid=np.zeros((1, 1, 2), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=0,
+        free_leaves=2,
+    )
+
+    def fake_plan(*_args, **_kwargs):
+        return octomap_grid, [(0, 0, 0), (1, 0, 0)], (0, 0, 0), (1, 0, 0)
+
+    monkeypatch.setattr(astar_path_publisher, "plan_path_from_bt", fake_plan)
+    node = astar_path_publisher.AstarPathPublisher()
+    node._declared_parameters["bt_path"] = "map.bt"
+
+    node._plan_once()
+    node._plan_once()
+    node._publish_path()
+
+    assert node._planned is True
+    assert len(node._path_message.poses) == 2
+    assert len(node._publisher.published) == 1
+    assert len(node._logger.infos) == 1
+    assert "Publishing A* path" in node._logger.infos[0]
+
+
+def test_astar_path_publisher_publishes_empty_path_when_unreachable(monkeypatch):
+    """A failed A* search should still publish an empty path message."""
+    patch_node_methods(monkeypatch)
+    octomap_grid = astar_path_publisher.OctomapGrid(
+        grid=np.zeros((1, 1, 2), dtype=np.uint8),
+        origin=(0.0, 0.0, 0.0),
+        resolution=1.0,
+        occupied_leaves=0,
+        free_leaves=2,
+    )
+
+    def fake_plan(*_args, **_kwargs):
+        return octomap_grid, None, (0, 0, 0), (1, 0, 0)
+
+    monkeypatch.setattr(astar_path_publisher, "plan_path_from_bt", fake_plan)
+    node = astar_path_publisher.AstarPathPublisher()
+    node._declared_parameters["bt_path"] = "map.bt"
+
+    node._plan_once()
+    node._publish_path()
+
+    assert node._planned is True
+    assert node._publisher.published[0].poses == []
+    assert "No A* path" in node._logger.warnings[-1]
 
 
 def test_cloud_filter_initializes_configured_topics(monkeypatch):
@@ -331,6 +529,7 @@ def test_odom_to_tf_publishes_transform_and_logs_once():
 def test_main_functions_spin_and_shutdown(monkeypatch):
     """Each executable main should initialize, spin, destroy, and shut down."""
     for module, class_name in (
+        (astar_path_publisher, "AstarPathPublisher"),
         (cloud_filter, "CloudFilter"),
         (map_filter, "MapFilter"),
         (map_monitor, "MapMonitor"),

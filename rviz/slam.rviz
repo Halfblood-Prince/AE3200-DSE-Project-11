@@ -76,6 +76,32 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /occupied_cells_vis_array
       Value: true
+    # Planned path from a saved .bt OctoMap through the bundled 3D A* helper.
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: A* Path
+      Buffer Length: 1
+      Color: 40; 255; 120
+      Line Style: Lines
+      Line Width: 0.08
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 0
+      Pose Style: None
+      Radius: 0.03
+      Shaft Length: 0.1
+      Shaft Radius: 0.03
+      Head Length: 0.2
+      Head Radius: 0.05
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /astar_path
+      Value: true
   Enabled: true
   Global Options:
     # OctoMap uses map as the global frame.
