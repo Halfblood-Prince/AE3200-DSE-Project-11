@@ -1,0 +1,78 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ros_simulation]
+  pull_request:
+    branches: [ros_simulation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Pytest Coverage
+    runs-on: ubuntu-latest
+    container: ros:jazzy-ros-base
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install ROS test dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-colcon-common-extensions \
+            python3-numpy \
+            python3-pytest \
+            python3-pytest-cov \
+            python3-setuptools \
+            ros-jazzy-ament-python \
+            ros-jazzy-geometry-msgs \
+            ros-jazzy-nav-msgs \
+            ros-jazzy-rclpy \
+            ros-jazzy-sensor-msgs \
+            ros-jazzy-sensor-msgs-py \
+            ros-jazzy-tf2-ros
+
+      - name: Build ROS package
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --symlink-install
+
+      - name: Run pytest coverage
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          pytest
+
+      - name: Summarize coverage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          with open("coverage.json", encoding="utf-8") as coverage_file:
+              coverage = json.load(coverage_file)
+
+          percent = coverage["totals"]["percent_covered_display"]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write(f"## Coverage\n\nTotal line coverage: **{percent}%**\n")
+          PY
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            coverage.json

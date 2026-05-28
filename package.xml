@@ -28,6 +28,11 @@
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>rviz2</exec_depend>
 
+  <!-- Test dependencies used by GitHub Actions and local ROS workspaces. -->
+  <test_depend>python3-numpy</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-pytest-cov</test_depend>
+
   <!-- Keep colcon using the Python-based ament package type. -->
   <export>
     <build_type>ament_python</build_type>

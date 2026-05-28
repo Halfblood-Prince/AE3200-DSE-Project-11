@@ -9,7 +9,7 @@ package_name = "ros_test"
 setup(
     name=package_name,
     version="0.1.0",
-    packages=find_packages(exclude=["test"]),
+    packages=find_packages(exclude=["test", "tests"]),
     data_files=[
         ("share/ament_index/resource_index/packages", [f"resource/{package_name}"]),
         (f"share/{package_name}", ["package.xml", "README.md"]),
@@ -19,6 +19,7 @@ setup(
         (f"share/{package_name}/rviz", glob("rviz/*")),
     ],
     install_requires=["setuptools"],
+    extras_require={"test": ["pytest", "pytest-cov"]},
     zip_safe=True,
     maintainer="user",
     maintainer_email="user@example.com",

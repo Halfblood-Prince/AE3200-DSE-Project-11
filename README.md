@@ -1,8 +1,12 @@
 <!-- Overview and operator notes for the ROS 2 Jazzy Gazebo/OctoMap package. -->
 # AeroSentinel ROS 2 Jazzy 3D Mapping
 
+[![Unit Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml)
+[![Coverage](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml)
+
 ## Project Structure
 
+- `.github/`: Repository ownership and GitHub Actions workflows for CodeQL, unit tests, and coverage.
 - `config/`: Gazebo GUI and OctoMap parameter files.
 - `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
 - `pathfinding/`: Standalone Python A* example code.
@@ -10,6 +14,7 @@
 - `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `robot.sdf`, while `robot.sdf` defines the sliding cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
 - `ros_test/`: Python package containing the ROS helper node implementations installed by `setup.py`.
 - `rviz/`: RViz layout for lidar, TF, and OctoMap visualization.
+- `tests/`: Pytest tests for the pathfinding helper, package assets, and ROS helper-node behavior.
 
 This package launches the AeroSentinel robot stack for ROS 2 Jazzy Jalisco on
 Ubuntu 24.04 with Gazebo Harmonic simulation support. The simulated robot is a
@@ -70,6 +75,19 @@ auto_drive
 map_filter
 map_monitor
 odom_to_tf
+```
+
+## Tests and Coverage
+
+GitHub Actions runs the pytest suite and coverage job inside the
+`ros:jazzy-ros-base` container so ROS message packages are available. For local
+checks, install the test tools, source Jazzy, and run pytest from the repository
+root:
+
+```bash
+sudo apt install python3-pytest python3-pytest-cov python3-numpy
+source /opt/ros/jazzy/setup.bash
+pytest
 ```
 
 ## Launch
