@@ -33,7 +33,6 @@ jobs:
             python3-pytest \
             python3-pytest-cov \
             python3-setuptools \
-            ros-jazzy-ament-python \
             ros-jazzy-geometry-msgs \
             ros-jazzy-nav-msgs \
             ros-jazzy-rclpy \

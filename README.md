@@ -39,7 +39,6 @@ Install the runtime and build dependencies:
 sudo apt update
 sudo apt install \
   python3-colcon-common-extensions \
-  ros-jazzy-ament-python \
   ros-jazzy-geometry-msgs \
   ros-jazzy-nav-msgs \
   ros-jazzy-octomap-server \
