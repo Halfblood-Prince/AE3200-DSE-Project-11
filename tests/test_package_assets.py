@@ -5,11 +5,27 @@ from pathlib import Path
 
 
 def test_robot_world_includes_split_robot_model():
-    """The world file should include the separate robot SDF file."""
+    """The world file should include the separate robot model URI."""
     world = ET.parse("robot/environment.world")
     uri_values = [element.text for element in world.findall(".//include/uri")]
 
-    assert "robot.sdf" in uri_values
+    assert "model://robot" in uri_values
+
+
+def test_robot_model_config_points_to_robot_sdf():
+    """The Gazebo model manifest should resolve model://robot to robot.sdf."""
+    model_config = ET.parse("robot/model.config")
+
+    assert model_config.findtext("name") == "robot"
+    assert model_config.findtext("sdf") == "robot.sdf"
+
+
+def test_launch_adds_package_share_to_gazebo_resource_path():
+    """Gazebo should be able to resolve model://robot after installation."""
+    text = Path("launch/gazebo_slam.launch.py").read_text()
+
+    assert "GZ_SIM_RESOURCE_PATH" in text
+    assert "IGN_GAZEBO_RESOURCE_PATH" in text
 
 
 def test_robot_uses_sliding_velocity_control_and_no_diffdrive():

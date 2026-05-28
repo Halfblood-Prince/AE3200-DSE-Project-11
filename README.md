@@ -11,7 +11,7 @@
 - `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
 - `pathfinding/`: Standalone Python A* example code.
 - `resource/`: ROS package index marker used by `ament_python`.
-- `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `robot.sdf`, while `robot.sdf` defines the sliding cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
+- `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `model://robot`; `model.config` resolves that model to `robot.sdf`, which defines the sliding cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
 - `ros_test/`: Python package containing the ROS helper node implementations installed by `setup.py`.
 - `rviz/`: RViz layout for lidar, TF, and OctoMap visualization.
 - `tests/`: Pytest tests for the pathfinding helper, package assets, and ROS helper-node behavior.
@@ -78,9 +78,9 @@ odom_to_tf
 
 GitHub Actions runs the pytest suite and coverage job inside the
 `ros:jazzy-ros-base` container so ROS message packages are available. The
-coverage badge is updated from `coverage.json` after pushes to `ros_simulation`.
-For local checks, install the test tools, source Jazzy, and run pytest from the
-repository root:
+coverage job enforces at least 90% total coverage, and the coverage badge is
+updated from `coverage.json` after pushes to `ros_simulation`. For local checks,
+install the test tools, source Jazzy, and run pytest from the repository root:
 
 ```bash
 sudo apt install python3-pytest python3-pytest-cov python3-numpy

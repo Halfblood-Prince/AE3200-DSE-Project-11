@@ -1,11 +1,17 @@
 """Launch Gazebo, ROS bridges, OctoMap mapping, RViz, and helper nodes."""
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    LogInfo,
+    SetEnvironmentVariable,
+    TimerAction,
+)
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitution import Substitution
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
@@ -92,6 +98,28 @@ def generate_launch_description():
     octomap_params = PathJoinSubstitution([pkg_share, "config", "octomap_server.yaml"])
     rviz_config = PathJoinSubstitution([pkg_share, "rviz", "slam.rviz"])
     gazebo_args = GazeboArgs(gz_args, world, gui_config, gazebo_gui_enabled)
+
+    # Gazebo needs the installed package share on its resource path so the
+    # world can resolve the split robot model through model://robot.
+    gazebo_resource_path = [
+        pkg_share,
+        ":",
+        EnvironmentVariable("GZ_SIM_RESOURCE_PATH", default_value=""),
+    ]
+    gz_resource_path = SetEnvironmentVariable(
+        name="GZ_SIM_RESOURCE_PATH",
+        value=gazebo_resource_path,
+        condition=IfCondition(is_sim),
+    )
+    ign_resource_path = SetEnvironmentVariable(
+        name="IGN_GAZEBO_RESOURCE_PATH",
+        value=[
+            pkg_share,
+            ":",
+            EnvironmentVariable("IGN_GAZEBO_RESOURCE_PATH", default_value=""),
+        ],
+        condition=IfCondition(is_sim),
+    )
 
     # Gazebo runs only in simulation mode and uses the Teleop GUI config.
     gazebo = IncludeLaunchDescription(
@@ -319,6 +347,8 @@ def generate_launch_description():
             ),
             sim_mode_log,
             real_mode_log,
+            gz_resource_path,
+            ign_resource_path,
             gazebo,
             bridge,
             points_bridge,

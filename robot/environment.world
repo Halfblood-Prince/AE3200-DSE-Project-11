@@ -338,9 +338,9 @@
       </link>
     </model>
 
-    <!-- The robot model is split into robot.sdf and included from this world. -->
+    <!-- The robot model is split into robot.sdf and resolved through model.config. -->
     <include>
-      <uri>robot.sdf</uri>
+      <uri>model://robot</uri>
       <pose>-5.4 2.8 0.12 0 0 0</pose>
     </include>
   </world>

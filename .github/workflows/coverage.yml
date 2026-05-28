@@ -52,7 +52,7 @@ jobs:
         run: |
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
-          pytest
+          pytest --cov-fail-under=90
 
       - name: Update coverage badge data
         env:
