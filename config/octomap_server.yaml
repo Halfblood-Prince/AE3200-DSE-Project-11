@@ -17,13 +17,11 @@ octomap_server:
     occupancy_min_z: 0.10
     occupancy_max_z: 3.0
 
-    # Ground filtering and speckle removal keep the map focused on real obstacles.
-    filter_ground_plane: true
+    # The upstream cloud filter and height limits already remove floor/self-hits.
+    # Keep PCL plane fitting off because drone-height scans often do not contain
+    # enough flat ground points, which otherwise produces noisy "no plane" logs.
+    filter_ground_plane: false
     filter_speckles: true
-    ground_filter:
-      distance: 0.04
-      angle: 0.15
-      plane_distance: 0.10
 
     # The 2D projection feeds map consumers while the 3D voxel markers feed RViz.
     incremental_2D_projection: true

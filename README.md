@@ -123,7 +123,7 @@ The launch starts:
 - The hover-capable cuboid robot from `robot/robot.sdf`
 - ROS-Gazebo bridges for `/clock`, `/points_raw`, `/imu`, `/odom`, and `/cmd_vel`
 - An optional 1920x1080 front camera at 30 FPS, bridged with `camera:=true`
-- A 16-channel 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
+- A 32-channel 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
 - `cloud_filter`, republishing self-filtered lidar points as `/points_filtered`
 - `odom_to_tf`, publishing `odom -> base_link`, unless `odom_tf:=false`
 - Static `base_link -> lidar_link` TF unless `lidar_tf:=false`
@@ -148,6 +148,11 @@ If raw `/points_raw` shows circles around the robot, those are usually lidar
 returns from the ground plane or from the robot's own body. RViz and OctoMap use
 `/points_filtered` by default so those self-hits do not become a trail of
 obstacles in the global map.
+
+OctoMap's PCL ground-plane segmentation is disabled because the filtered,
+hover-capable scan often does not contain a stable ground plane to fit. Floor
+suppression is handled by `/points_filtered` and the OctoMap height limits
+instead.
 
 The 2D projected map topics `/map` and `/map_valid` are intentionally not shown
 in RViz by default. They remain available for map monitoring and other custom

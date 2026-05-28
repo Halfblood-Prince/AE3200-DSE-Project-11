@@ -54,17 +54,17 @@
       <sensor name="gpu_3d_lidar" type="gpu_lidar">
         <pose>0.45 0 0.32 0 0 0</pose>
         <topic>/points_raw</topic>
-        <update_rate>15</update_rate>
+        <update_rate>10</update_rate>
         <ray>
           <scan>
             <horizontal>
-              <samples>1024</samples>
+              <samples>2048</samples>
               <resolution>1</resolution>
               <min_angle>-3.14159</min_angle>
               <max_angle>3.14159</max_angle>
             </horizontal>
             <vertical>
-              <samples>16</samples>
+              <samples>32</samples>
               <resolution>1</resolution>
               <min_angle>-0.261799</min_angle>
               <max_angle>0.261799</max_angle>

@@ -50,6 +50,23 @@ def test_launch_and_rviz_use_filtered_point_cloud():
     assert "Value: /points_filtered" in rviz_text
 
 
+def test_lidar_uses_dense_wall_mapping_scan_pattern():
+    """The simulated lidar should be dense enough to avoid sparse wall gaps."""
+    text = Path("robot/robot.sdf").read_text()
+
+    assert "<update_rate>10</update_rate>" in text
+    assert "<samples>2048</samples>" in text
+    assert "<samples>32</samples>" in text
+
+
+def test_octomap_disables_redundant_ground_segmentation():
+    """The filtered cloud should avoid noisy PCL ground-plane warnings."""
+    text = Path("config/octomap_server.yaml").read_text()
+
+    assert "filter_ground_plane: false" in text
+    assert "ground_filter:" not in text
+
+
 def test_camera_bridge_is_opt_in_to_limit_transport_load():
     """High-bandwidth camera images should not be bridged by default."""
     launch_text = Path("launch/gazebo_slam.launch.py").read_text()
