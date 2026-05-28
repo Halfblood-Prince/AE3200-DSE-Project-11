@@ -1,5 +1,5 @@
 <!-- Overview and operator notes for the ROS 2 Jazzy Gazebo/OctoMap package. -->
-# AeroSentinel ROS 2 Jazzy 3D Mapping
+# ROS 2 Jazzy 3D Mapping
 
 [![Unit Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml)
 [![Subsystem Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/subsystem-tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/subsystem-tests.yml)
