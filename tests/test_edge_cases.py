@@ -61,11 +61,11 @@ def make_cloud(
     datatype = point_field_type.FLOAT32 if datatype is None else datatype
     endian = ">" if is_bigendian else "<"
     point_step = 12
-    row_step = point_step * len(points) + row_padding
 
     msg = point_cloud_type()
     msg.height = height
     msg.width = len(points) // height if height else 0
+    msg.row_step = point_step * msg.width + row_padding
     msg.fields = [
         point_field_type(name="x", offset=0, datatype=datatype, count=1),
         point_field_type(name="y", offset=4, datatype=datatype, count=1),
@@ -73,7 +73,6 @@ def make_cloud(
     ]
     msg.is_bigendian = is_bigendian
     msg.point_step = point_step
-    msg.row_step = row_step
     msg.is_dense = True
 
     data = bytearray()
