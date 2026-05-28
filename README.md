@@ -8,9 +8,8 @@
 - `pathfinding/`: Standalone Python A* example code.
 - `resource/`: ROS package index marker used by `ament_python`.
 - `robot/`: Gazebo simulation assets. `environment.world` defines the world and includes `robot.sdf`, while `robot.sdf` defines the sliding cuboid robot, 3D lidar, IMU, camera, velocity control, and odometry publisher.
-- `ros_test/`: Python package entrypoints installed by `setup.py`.
+- `ros_test/`: Python package containing the ROS helper node implementations installed by `setup.py`.
 - `rviz/`: RViz layout for lidar, TF, and OctoMap visualization.
-- `scripts/`: Source implementations for the ROS helper nodes.
 
 This package launches the AeroSentinel robot stack for ROS 2 Jazzy Jalisco on
 Ubuntu 24.04 with Gazebo Harmonic simulation support. The simulated robot is a
