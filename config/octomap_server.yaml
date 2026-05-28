@@ -1,25 +1,29 @@
-# OctoMap turns the bridged 3D lidar cloud into a voxel map and a 2D projection.
+# OctoMap turns the filtered 3D lidar cloud into a voxel map and a 2D projection.
 octomap_server:
   ros__parameters:
     # Simulation time keeps map timestamps aligned with Gazebo.
     use_sim_time: true
 
-    # TF frames: point clouds arrive in lidar_link and are transformed through base_link.
+    # TF frames: /points_filtered arrives in lidar_link and is transformed through base_link.
     frame_id: map
     base_frame_id: base_link
 
-    # Voxel resolution is small enough for indoor obstacles without exploding map size.
+    # Keep real 3D voxels fine enough for indoor obstacles without exploding map size.
     resolution: 0.05
 
     # Height limits keep floor noise and extreme ceiling returns out of the map.
-    point_cloud_min_z: 0.05
-    point_cloud_max_z: 2.0
-    occupancy_min_z: 0.05
-    occupancy_max_z: 2.0
+    point_cloud_min_z: 0.10
+    point_cloud_max_z: 3.0
+    occupancy_min_z: 0.10
+    occupancy_max_z: 3.0
 
-    # Gazebo's flat floor is already filtered by height, so ground-plane fitting is off.
-    filter_ground_plane: false
+    # Ground filtering and speckle removal keep the map focused on real obstacles.
+    filter_ground_plane: true
     filter_speckles: true
+    ground_filter:
+      distance: 0.04
+      angle: 0.15
+      plane_distance: 0.10
 
     # The 2D projection feeds map consumers while the 3D voxel markers feed RViz.
     incremental_2D_projection: true
@@ -27,3 +31,7 @@ octomap_server:
     sensor_model:
       # Match the lidar max range in robot.sdf.
       max_range: 12.0
+      hit: 0.70
+      miss: 0.40
+      min: 0.12
+      max: 0.97

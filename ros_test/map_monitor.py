@@ -64,7 +64,7 @@ class MapMonitor(Node):
         self._seconds_waited += 5
         self.get_logger().warning(
             "Still waiting for filtered map after "
-            f"{self._seconds_waited}s. Move the robot and confirm /points_raw "
+            f"{self._seconds_waited}s. Move the robot and confirm /points_filtered "
             "uses frame lidar_link with map -> odom -> base_link -> lidar_link TF."
         )
 

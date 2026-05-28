@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
-<!-- Standalone sliding cuboid robot included by environment.world. -->
+<!-- Standalone hover-capable cuboid robot included by environment.world. -->
 <sdf version="1.10">
   <model name="vehicle_blue" canonical_link="base_link">
-    <!-- The visible robot is one flat cuboid that slides on the floor. -->
+    <!-- The visible robot is one flat cuboid that can translate in 3D. -->
     <link name="base_link">
       <pose relative_to="__model__">0 0 0.38 0 0 0</pose>
+      <gravity>false</gravity>
 
       <!-- Inertia is sized for a 1.2 m x 0.8 m x 0.18 m cuboid. -->
       <inertial>
@@ -19,7 +20,7 @@
         </inertia>
       </inertial>
 
-      <!-- A low-friction contact surface lets velocity control look like sliding. -->
+      <!-- A low-friction contact surface keeps floor contact gentle when descending. -->
       <collision name="collision">
         <geometry>
           <box>
@@ -109,18 +110,18 @@
       </sensor>
     </link>
 
-    <!-- VelocityControl consumes /cmd_vel and directly slides the model. -->
+    <!-- VelocityControl consumes /cmd_vel and directly moves the model in 3D. -->
     <plugin filename="gz-sim-velocity-control-system" name="gz::sim::systems::VelocityControl">
       <topic>/cmd_vel</topic>
     </plugin>
 
-    <!-- OdometryPublisher publishes /odom for the sliding cuboid. -->
+    <!-- OdometryPublisher publishes 3D /odom for the hover-capable cuboid. -->
     <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
       <odom_frame>odom</odom_frame>
       <robot_base_frame>base_link</robot_base_frame>
       <odom_publish_frequency>50</odom_publish_frequency>
       <odom_topic>/odom</odom_topic>
-      <dimensions>2</dimensions>
+      <dimensions>3</dimensions>
     </plugin>
   </model>
 </sdf>

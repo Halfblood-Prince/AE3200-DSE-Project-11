@@ -33,7 +33,7 @@ Visualization Manager:
         {}
       Update Interval: 0
       Value: true
-    # Raw bridged lidar points from robot.sdf.
+    # Filtered lidar points remove robot self-hits and near-floor rings.
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -60,7 +60,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /points_raw
+        Value: /points_filtered
       Use Fixed Frame: true
       Value: true
     # OctoMap publishes occupied voxels as visualization markers.

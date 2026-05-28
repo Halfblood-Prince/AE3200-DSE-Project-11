@@ -1,15 +1,18 @@
 """Unit tests for ROS helper logic that can run in a ROS environment."""
 
 from types import SimpleNamespace
+import struct
 
 import pytest
 
 pytest.importorskip("rclpy")
 pytest.importorskip("nav_msgs.msg")
+pytest.importorskip("sensor_msgs.msg")
 
 from nav_msgs.msg import OccupancyGrid
+from sensor_msgs.msg import PointCloud2, PointField
 
-from ros_test import map_filter, map_monitor, odom_to_tf
+from ros_test import cloud_filter, map_filter, map_monitor, odom_to_tf
 
 
 class RecordingLogger:
@@ -73,13 +76,14 @@ def patch_node_methods(monkeypatch):
         self._timers.append(timer)
         return timer
 
-    monkeypatch.setattr(map_filter.Node, "__init__", node_init)
-    monkeypatch.setattr(map_filter.Node, "declare_parameter", declare_parameter)
-    monkeypatch.setattr(map_filter.Node, "get_parameter", get_parameter)
-    monkeypatch.setattr(map_filter.Node, "create_publisher", create_publisher)
-    monkeypatch.setattr(map_filter.Node, "create_subscription", create_subscription)
-    monkeypatch.setattr(map_filter.Node, "create_timer", create_timer)
-    monkeypatch.setattr(map_filter.Node, "get_logger", lambda self: self._logger)
+    for module in (cloud_filter, map_filter, map_monitor, odom_to_tf):
+        monkeypatch.setattr(module.Node, "__init__", node_init)
+        monkeypatch.setattr(module.Node, "declare_parameter", declare_parameter)
+        monkeypatch.setattr(module.Node, "get_parameter", get_parameter)
+        monkeypatch.setattr(module.Node, "create_publisher", create_publisher)
+        monkeypatch.setattr(module.Node, "create_subscription", create_subscription)
+        monkeypatch.setattr(module.Node, "create_timer", create_timer)
+        monkeypatch.setattr(module.Node, "get_logger", lambda self: self._logger)
 
 
 def make_grid(width, height, resolution=0.05):
@@ -91,6 +95,33 @@ def make_grid(width, height, resolution=0.05):
     return msg
 
 
+def make_cloud(points):
+    """Build a PointCloud2 with FLOAT32 x/y/z fields."""
+    msg = PointCloud2()
+    msg.height = 1
+    msg.width = len(points)
+    msg.fields = [
+        PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+        PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+        PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+    ]
+    msg.is_bigendian = False
+    msg.point_step = 12
+    msg.row_step = msg.point_step * msg.width
+    msg.data = b"".join(struct.pack("<fff", *point) for point in points)
+    msg.is_dense = True
+    return msg
+
+
+def unpack_cloud_points(msg):
+    """Return xyz tuples from a compact FLOAT32 test cloud."""
+    data = bytes(msg.data)
+    return [
+        struct.unpack_from("<fff", data, offset)
+        for offset in range(0, len(data), msg.point_step)
+    ]
+
+
 def test_transient_map_qos_helpers_match():
     """Map helper nodes should use the same latched QoS settings."""
     filter_qos = map_filter.transient_map_qos()
@@ -100,6 +131,37 @@ def test_transient_map_qos_helpers_match():
     assert monitor_qos.depth == 1
     assert filter_qos.durability == monitor_qos.durability
     assert filter_qos.reliability == monitor_qos.reliability
+
+
+def test_cloud_filter_initializes_configured_topics(monkeypatch):
+    """CloudFilter should republish /points_raw as /points_filtered."""
+    patch_node_methods(monkeypatch)
+
+    node = cloud_filter.CloudFilter()
+
+    assert node._node_name == "cloud_filter"
+    assert node._publishers[0][1] == "/points_filtered"
+    assert node._subscriptions[0].topic == "/points_raw"
+    assert node._subscriptions[0].callback == node._handle_cloud
+
+
+def test_cloud_filter_removes_self_floor_and_invalid_points():
+    """The cloud filter should keep real obstacle returns and drop self hits."""
+    msg = make_cloud(
+        [
+            (2.0, 0.0, 0.0),
+            (0.0, 0.0, -0.3),
+            (1.0, 0.0, -0.8),
+            (float("nan"), 0.0, 0.0),
+        ]
+    )
+
+    filtered = cloud_filter.filter_cloud_message(msg, cloud_filter.CloudFilterConfig())
+
+    assert filtered.height == 1
+    assert filtered.width == 1
+    assert filtered.row_step == filtered.point_step
+    assert unpack_cloud_points(filtered) == [(2.0, 0.0, 0.0)]
 
 
 def test_map_filter_initializes_configured_topics(monkeypatch):
@@ -269,6 +331,7 @@ def test_odom_to_tf_publishes_transform_and_logs_once():
 def test_main_functions_spin_and_shutdown(monkeypatch):
     """Each executable main should initialize, spin, destroy, and shut down."""
     for module, class_name in (
+        (cloud_filter, "CloudFilter"),
         (map_filter, "MapFilter"),
         (map_monitor, "MapMonitor"),
         (odom_to_tf, "OdomToTf"),

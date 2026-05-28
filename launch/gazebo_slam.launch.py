@@ -170,6 +170,21 @@ def generate_launch_description():
         condition=IfCondition(is_sim),
     )
 
+    # Remove the robot's own body and near-floor rings before mapping/visualization.
+    cloud_filter = Node(
+        package="ros_test",
+        executable="cloud_filter",
+        name="cloud_filter",
+        output="screen",
+        parameters=[
+            {
+                "use_sim_time": use_sim_time,
+                "input_topic": "/points_raw",
+                "output_topic": "/points_filtered",
+            }
+        ],
+    )
+
     # Convert /odom into TF so the map, robot base, and sensors share one tree.
     odom_to_tf = Node(
         package="ros_test",
@@ -244,7 +259,7 @@ def generate_launch_description():
         output="screen",
         parameters=[octomap_params, {"use_sim_time": use_sim_time}],
         remappings=[
-            ("cloud_in", "/points_raw"),
+            ("cloud_in", "/points_filtered"),
             ("projected_map", "/map"),
         ],
         condition=IfCondition(mapper),
@@ -352,6 +367,7 @@ def generate_launch_description():
             gazebo,
             bridge,
             points_bridge,
+            cloud_filter,
             odom_to_tf,
             lidar_static_tf,
             map_to_odom_static_tf,
