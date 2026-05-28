@@ -44,7 +44,7 @@ def test_world_loads_required_gazebo_systems_and_robot_model():
 
 def test_launch_defaults_keep_real_mode_safe_and_sim_opt_in():
     """Default launch arguments should avoid starting simulation-only pieces unexpectedly."""
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
 
     assert launch_argument_default(launch_text, "run") == "real"
     assert launch_argument_default(launch_text, "rum") == ""
@@ -59,7 +59,7 @@ def test_launch_defaults_keep_real_mode_safe_and_sim_opt_in():
 
 def test_launch_orders_transport_tf_mapping_and_visualization():
     """Startup order should bring up bridges/TF before mapping and RViz."""
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
     launch_actions = launch_text.split("return LaunchDescription(", maxsplit=1)[1]
 
     points_bridge_index = launch_actions.index("points_bridge,")
@@ -78,7 +78,7 @@ def test_launch_orders_transport_tf_mapping_and_visualization():
 def test_system_topic_inventory_is_documented_and_backed_by_sources():
     """README expected topics should match topics produced by launch/config/assets."""
     readme_text = read_asset("README.md")
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
     robot_text = read_asset("robot/robot.sdf")
     octomap_text = read_asset("config/octomap_server.yaml")
 

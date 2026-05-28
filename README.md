@@ -107,7 +107,7 @@ pytest -o addopts="" tests/test_edge_cases.py
 Real robot mode is the default:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py
+ros2 launch ros_test slam.launch.py
 ```
 
 Real robot mode does not start Gazebo or the ROS-Gazebo bridge. It uses wall
@@ -124,7 +124,7 @@ It also expects a base controller subscribed to `/cmd_vel`.
 Simulation mode is explicit:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim
+ros2 launch ros_test slam.launch.py run:=sim
 ```
 
 `rum:=sim` is accepted as a compatibility alias, but `run:=sim` is preferred.
@@ -190,32 +190,32 @@ and the usual Gazebo teleop keys for planar motion and yaw.
 Disable OctoMap mapping:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim mapper:=false
+ros2 launch ros_test slam.launch.py run:=sim mapper:=false
 ```
 
 Disable RViz:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py rviz:=false
+ros2 launch ros_test slam.launch.py rviz:=false
 ```
 
 Bridge the front camera image topic:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim camera:=true
+ros2 launch ros_test slam.launch.py run:=sim camera:=true
 ```
 
 Run Gazebo headless when the GUI cannot create an OpenGL window:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false
+ros2 launch ros_test slam.launch.py run:=sim gazebo_gui:=false
 ```
 
 On WSL, remote desktops, and machines without a working OpenGL display, run the
 simulator headless and disable RViz until the display stack is fixed:
 
 ```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false rviz:=false
+ros2 launch ros_test slam.launch.py run:=sim gazebo_gui:=false rviz:=false
 ```
 
 ## Expected Topics

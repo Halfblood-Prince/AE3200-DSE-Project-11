@@ -28,7 +28,7 @@ def plugin_by_filename(model, filename):
 def test_lidar_filter_mapper_topic_contract():
     """The lidar, filter, mapper, and RViz should agree on cloud topics."""
     model = robot_model()
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
     octomap_text = read_asset("config/octomap_server.yaml")
     rviz_text = read_asset("rviz/slam.rviz")
 
@@ -48,7 +48,7 @@ def test_lidar_filter_mapper_topic_contract():
 def test_motion_subsystem_uses_3d_velocity_and_odometry():
     """Teleop, bridge, VelocityControl, and odometry should form one 3D motion path."""
     model = robot_model()
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
     teleop_text = read_asset("config/gazebo_teleop.config")
 
     velocity_control = plugin_by_filename(model, "gz-sim-velocity-control-system")
@@ -65,7 +65,7 @@ def test_motion_subsystem_uses_3d_velocity_and_odometry():
 def test_camera_subsystem_is_optional_and_isolated():
     """The high-bandwidth camera bridge should stay out of the default bridge."""
     model = robot_model()
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
 
     base_bridge_block = launch_text.split("# Camera images are high-bandwidth", maxsplit=1)[0]
     camera = model.find(".//sensor[@name='front_camera']")
@@ -82,7 +82,7 @@ def test_camera_subsystem_is_optional_and_isolated():
 def test_helper_nodes_are_installed_and_launched_once():
     """Every Python helper executable should be exposed and launched by name."""
     setup_text = read_asset("setup.py")
-    launch_text = read_asset("launch/gazebo_slam.launch.py")
+    launch_text = read_asset("launch/slam.launch.py")
 
     for executable in ("cloud_filter", "odom_to_tf", "map_filter", "map_monitor"):
         assert f"{executable} = ros_test.{executable}:main" in setup_text
