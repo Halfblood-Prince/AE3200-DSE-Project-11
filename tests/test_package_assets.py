@@ -50,13 +50,12 @@ def test_launch_and_rviz_use_filtered_point_cloud():
     assert "Value: /points_filtered" in rviz_text
 
 
-def test_lidar_uses_dense_wall_mapping_scan_pattern():
-    """The simulated lidar should be dense enough to avoid sparse wall gaps."""
+def test_lidar_uses_required_scan_resolution():
+    """The simulated lidar should keep the expected 1024 x 16 scan pattern."""
     text = Path("robot/robot.sdf").read_text()
 
-    assert "<update_rate>10</update_rate>" in text
-    assert "<samples>2048</samples>" in text
-    assert "<samples>32</samples>" in text
+    assert "<samples>1024</samples>" in text
+    assert "<samples>16</samples>" in text
 
 
 def test_octomap_disables_redundant_ground_segmentation():

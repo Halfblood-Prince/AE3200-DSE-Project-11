@@ -123,7 +123,7 @@ The launch starts:
 - The hover-capable cuboid robot from `robot/robot.sdf`
 - ROS-Gazebo bridges for `/clock`, `/points_raw`, `/imu`, `/odom`, and `/cmd_vel`
 - An optional 1920x1080 front camera at 30 FPS, bridged with `camera:=true`
-- A 32-channel 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
+- A 1024 x 16 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
 - `cloud_filter`, republishing self-filtered lidar points as `/points_filtered`
 - `odom_to_tf`, publishing `odom -> base_link`, unless `odom_tf:=false`
 - Static `base_link -> lidar_link` TF unless `lidar_tf:=false`
