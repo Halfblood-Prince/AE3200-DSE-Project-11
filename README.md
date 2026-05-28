@@ -121,8 +121,8 @@ The launch starts:
 - Gazebo Harmonic with `robot/environment.world` in `run:=sim`
 - Gazebo Teleop GUI in `run:=sim`, unless `gazebo_gui:=false`
 - The hover-capable cuboid robot from `robot/robot.sdf`
-- ROS-Gazebo bridges for `/clock`, `/points_raw`, `/front_camera/image`, `/imu`, `/odom`, and `/cmd_vel`
-- A 1920x1080 front camera at 60 FPS
+- ROS-Gazebo bridges for `/clock`, `/points_raw`, `/imu`, `/odom`, and `/cmd_vel`
+- An optional 1920x1080 front camera at 30 FPS, bridged with `camera:=true`
 - A 16-channel 3D lidar bridged from Gazebo `/points_raw/points` to ROS `/points_raw`
 - `cloud_filter`, republishing self-filtered lidar points as `/points_filtered`
 - `odom_to_tf`, publishing `odom -> base_link`, unless `odom_tf:=false`
@@ -181,6 +181,12 @@ Disable RViz:
 ros2 launch ros_test gazebo_slam.launch.py rviz:=false
 ```
 
+Bridge the front camera image topic:
+
+```bash
+ros2 launch ros_test gazebo_slam.launch.py run:=sim camera:=true
+```
+
 Run Gazebo headless when the GUI cannot create an OpenGL window:
 
 ```bash
@@ -199,7 +205,7 @@ ros2 launch ros_test gazebo_slam.launch.py run:=sim gazebo_gui:=false rviz:=fals
 ```text
 /points_raw               sensor_msgs/msg/PointCloud2 from the 3D lidar
 /points_filtered          sensor_msgs/msg/PointCloud2 after self/floor filtering
-/front_camera/image       sensor_msgs/msg/Image camera feed
+/front_camera/image       sensor_msgs/msg/Image camera feed, if camera:=true
 /imu                      sensor_msgs/msg/Imu from Gazebo
 /odom                     nav_msgs/msg/Odometry from Gazebo
 /occupied_cells_vis_array visualization_msgs/msg/MarkerArray from OctoMap

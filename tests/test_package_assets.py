@@ -50,6 +50,19 @@ def test_launch_and_rviz_use_filtered_point_cloud():
     assert "Value: /points_filtered" in rviz_text
 
 
+def test_camera_bridge_is_opt_in_to_limit_transport_load():
+    """High-bandwidth camera images should not be bridged by default."""
+    launch_text = Path("launch/gazebo_slam.launch.py").read_text()
+    robot_text = Path("robot/robot.sdf").read_text()
+
+    assert 'LaunchConfiguration("camera")' in launch_text
+    assert '"camera",' in launch_text
+    assert 'default_value="false"' in launch_text
+    assert 'name="ros_gz_camera_bridge"' in launch_text
+    assert "<update_rate>30</update_rate>" in robot_text
+    assert "<always_on>0</always_on>" in robot_text
+
+
 def test_setup_entrypoints_match_nodes():
     """setup.py should expose all installed ROS helper node entrypoints."""
     text = Path("setup.py").read_text()

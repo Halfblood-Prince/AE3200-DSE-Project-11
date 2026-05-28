@@ -82,6 +82,7 @@ def generate_launch_description():
     gui_config = LaunchConfiguration("gui_config")
     gz_args = LaunchConfiguration("gz_args")
     gazebo_gui_enabled = LaunchConfiguration("gazebo_gui")
+    camera_enabled = LaunchConfiguration("camera")
     odom_tf_enabled = LaunchConfiguration("odom_tf")
     lidar_tf_enabled = LaunchConfiguration("lidar_tf")
     mapper = LaunchConfiguration("mapper")
@@ -140,7 +141,7 @@ def generate_launch_description():
         condition=UnlessCondition(is_sim),
     )
 
-    # Bridge clock, camera, IMU, odom, and velocity commands between Gazebo and ROS.
+    # Bridge clock, IMU, odom, and velocity commands between Gazebo and ROS.
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
@@ -148,12 +149,23 @@ def generate_launch_description():
         output="screen",
         arguments=[
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            "/front_camera/image@sensor_msgs/msg/Image[gz.msgs.Image",
             "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU",
             "/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
             "/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
         ],
         condition=IfCondition(is_sim),
+    )
+
+    # Camera images are high-bandwidth, so bridge them only when requested.
+    camera_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="ros_gz_camera_bridge",
+        output="screen",
+        arguments=[
+            "/front_camera/image@sensor_msgs/msg/Image[gz.msgs.Image",
+        ],
+        condition=IfCondition(camera_enabled),
     )
 
     # The 3D lidar needs a PointCloudPacked bridge plus a stable lidar frame id.
@@ -336,6 +348,11 @@ def generate_launch_description():
                 description="Set false to run Gazebo server-only without the GUI.",
             ),
             DeclareLaunchArgument(
+                "camera",
+                default_value="false",
+                description="Set true to bridge the high-bandwidth front camera image topic.",
+            ),
+            DeclareLaunchArgument(
                 "odom_tf",
                 default_value="true",
                 description="Set false if the real robot already publishes odom -> base_link TF.",
@@ -366,6 +383,7 @@ def generate_launch_description():
             ign_resource_path,
             gazebo,
             bridge,
+            camera_bridge,
             points_bridge,
             cloud_filter,
             odom_to_tf,
