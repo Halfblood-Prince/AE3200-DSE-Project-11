@@ -31,7 +31,6 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             python3-colcon-common-extensions \
-            git \
             python3-numpy \
             python3-pytest \
             python3-pytest-cov \
@@ -55,67 +54,13 @@ jobs:
           source install/setup.bash
           pytest
 
-      - name: Summarize coverage
+      - name: Update coverage badge data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_REMOTE_BADGE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/ros_simulation' }}
         shell: bash
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-
-          with open("coverage.json", encoding="utf-8") as coverage_file:
-              coverage = json.load(coverage_file)
-
-          percent = coverage["totals"]["percent_covered_display"]
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write(f"## Coverage\n\nTotal line coverage: **{percent}%**\n")
-          PY
-
-      - name: Update README coverage badge
-        if: github.event_name == 'push' && github.ref == 'refs/heads/ros_simulation'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          with open("coverage.json", encoding="utf-8") as coverage_file:
-              coverage = json.load(coverage_file)
-
-          percent = float(coverage["totals"]["percent_covered"])
-          display = coverage["totals"]["percent_covered_display"]
-          if percent >= 90:
-              color = "brightgreen"
-          elif percent >= 80:
-              color = "green"
-          elif percent >= 70:
-              color = "yellowgreen"
-          elif percent >= 60:
-              color = "yellow"
-          elif percent >= 50:
-              color = "orange"
-          else:
-              color = "red"
-
-          badge = {
-              "schemaVersion": 1,
-              "label": "coverage",
-              "message": f"{display}%",
-              "color": color,
-          }
-          badge_path = Path(".github/badges/coverage.json")
-          badge_path.parent.mkdir(parents=True, exist_ok=True)
-          badge_path.write_text(json.dumps(badge, indent=2) + "\n", encoding="utf-8")
-          PY
-
-          if git diff --quiet -- .github/badges/coverage.json; then
-            echo "Coverage badge is already up to date."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/badges/coverage.json
-            git commit -m "Update coverage badge"
-            git push origin HEAD:${GITHUB_REF_NAME}
-          fi
+          python3 .github/scripts/update_coverage_badge.py
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

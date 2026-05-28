@@ -77,9 +77,10 @@ odom_to_tf
 ## Tests and Coverage
 
 GitHub Actions runs the pytest suite and coverage job inside the
-`ros:jazzy-ros-base` container so ROS message packages are available. For local
-checks, install the test tools, source Jazzy, and run pytest from the repository
-root:
+`ros:jazzy-ros-base` container so ROS message packages are available. The
+coverage badge is updated from `coverage.json` after pushes to `ros_simulation`.
+For local checks, install the test tools, source Jazzy, and run pytest from the
+repository root:
 
 ```bash
 sudo apt install python3-pytest python3-pytest-cov python3-numpy
