@@ -10,7 +10,7 @@
 
 ## Project Structure
 
-- `.github/`: Repository ownership and GitHub Actions workflows for CodeQL, unit, subsystem, system, edge-case, and coverage checks.
+- `.github/`: GitHub Actions workflows for CodeQL, unit, subsystem, system, edge-case, and coverage checks.
 - `config/`: Gazebo GUI and OctoMap parameter files.
 - `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
 - `pathfinding/`: Standalone Python A* example code.
