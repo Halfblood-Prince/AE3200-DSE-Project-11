@@ -1,0 +1,56 @@
+name: Subsystem Tests
+
+on:
+  push:
+    branches:
+      - ros_simulation
+    paths-ignore:
+      - .github/badges/coverage.json
+  pull_request:
+    branches:
+      - ros_simulation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: subsystem-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  subsystem:
+    name: Pytest Subsystems
+    runs-on: ubuntu-latest
+    container: ros:jazzy-ros-base
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-colcon-common-extensions \
+            python3-numpy \
+            python3-pytest \
+            python3-setuptools \
+            ros-jazzy-geometry-msgs \
+            ros-jazzy-nav-msgs \
+            ros-jazzy-rclpy \
+            ros-jazzy-sensor-msgs \
+            ros-jazzy-tf2-ros
+
+      - name: Build ROS package
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --symlink-install
+
+      - name: Run subsystem tests
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          pytest -o addopts="" tests/test_subsystems.py tests/test_ros_helpers.py

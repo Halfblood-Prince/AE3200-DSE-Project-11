@@ -2,11 +2,15 @@
 # AeroSentinel ROS 2 Jazzy 3D Mapping
 
 [![Unit Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml)
+[![Subsystem Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/subsystem-tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/subsystem-tests.yml)
+[![System Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/system-tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/system-tests.yml)
+[![Edge Case Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/edge-case-tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/edge-case-tests.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhalfblood-prince%2Fae3200-dse-project-11%2Fros_simulation%2F.github%2Fbadges%2Fcoverage.json)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml)
+[![CodeQL](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/codeql.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/codeql.yml)
 
 ## Project Structure
 
-- `.github/`: Repository ownership and GitHub Actions workflows for CodeQL, unit tests, and coverage.
+- `.github/`: Repository ownership and GitHub Actions workflows for CodeQL, unit, subsystem, system, edge-case, and coverage checks.
 - `config/`: Gazebo GUI and OctoMap parameter files.
 - `launch/`: ROS 2 launch files that start Gazebo, bridges, mapping, RViz and helper nodes.
 - `pathfinding/`: Standalone Python A* example code.
@@ -77,16 +81,25 @@ odom_to_tf
 
 ## Tests and Coverage
 
-GitHub Actions runs the pytest suite and coverage job inside the
-`ros:jazzy-ros-base` container so ROS message packages are available. The
-coverage job enforces at least 90% total coverage, and the coverage badge is
-updated from `coverage.json` after pushes to `ros_simulation`. For local checks,
-install the test tools, source Jazzy, and run pytest from the repository root:
+GitHub Actions runs the unit, subsystem, system, edge-case, and coverage pytest
+suites inside the `ros:jazzy-ros-base` container so ROS message packages are
+available. The coverage job enforces at least 90% total coverage, and the
+coverage badge is updated from `coverage.json` after pushes to `ros_simulation`.
+For local checks, install the test tools, source Jazzy, and run pytest from the
+repository root:
 
 ```bash
 sudo apt install python3-pytest python3-pytest-cov python3-numpy
 source /opt/ros/jazzy/setup.bash
 pytest
+```
+
+Targeted suites can be run directly:
+
+```bash
+pytest -o addopts="" tests/test_subsystems.py tests/test_ros_helpers.py
+pytest -o addopts="" tests/test_system_stack.py
+pytest -o addopts="" tests/test_edge_cases.py
 ```
 
 ## Launch

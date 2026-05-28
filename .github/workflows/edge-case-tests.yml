@@ -1,0 +1,53 @@
+name: Edge Case Tests
+
+on:
+  push:
+    branches:
+      - ros_simulation
+    paths-ignore:
+      - .github/badges/coverage.json
+  pull_request:
+    branches:
+      - ros_simulation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-case-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  edge-cases:
+    name: Pytest Edge Cases
+    runs-on: ubuntu-latest
+    container: ros:jazzy-ros-base
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-colcon-common-extensions \
+            python3-numpy \
+            python3-pytest \
+            python3-setuptools \
+            ros-jazzy-rclpy \
+            ros-jazzy-sensor-msgs
+
+      - name: Build ROS package
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --symlink-install
+
+      - name: Run edge case tests
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          pytest -o addopts="" tests/test_edge_cases.py
