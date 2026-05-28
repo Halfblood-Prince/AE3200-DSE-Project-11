@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - ros_simulation
+    paths-ignore:
+      - .github/badges/coverage.json
   pull_request:
     branches:
       - ros_simulation

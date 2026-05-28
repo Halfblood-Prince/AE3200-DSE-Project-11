@@ -2,7 +2,7 @@
 # AeroSentinel ROS 2 Jazzy 3D Mapping
 
 [![Unit Tests](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/tests.yml)
-[![Coverage](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml/badge.svg?branch=ros_simulation)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fhalfblood-prince%2Fae3200-dse-project-11%2Fros_simulation%2F.github%2Fbadges%2Fcoverage.json)](https://github.com/halfblood-prince/ae3200-dse-project-11/actions/workflows/coverage.yml)
 
 ## Project Structure
 
