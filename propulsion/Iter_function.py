@@ -32,7 +32,7 @@ def find_prop(MTOW,N_prop, prop_list):
         check, cond = OEI_performance_check(N_prop, T_req, prop)
         if check:
             P_req = get_power_required(N_prop, T_req, prop)
-            options[prop.name]= dict("OEI_condition": cond, "Power_required": P_req)
+            options[prop.name]= {"OEI_condition": cond, "Power_required": P_req}
         else:
             pass
     best = 100000000000000000
