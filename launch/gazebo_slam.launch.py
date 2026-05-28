@@ -76,7 +76,6 @@ def generate_launch_description():
     gui_config = LaunchConfiguration("gui_config")
     gz_args = LaunchConfiguration("gz_args")
     gazebo_gui_enabled = LaunchConfiguration("gazebo_gui")
-    auto_drive_enabled = LaunchConfiguration("auto_drive")
     odom_tf_enabled = LaunchConfiguration("odom_tf")
     lidar_tf_enabled = LaunchConfiguration("lidar_tf")
     mapper = LaunchConfiguration("mapper")
@@ -260,16 +259,6 @@ def generate_launch_description():
         condition=IfCondition(mapper),
     )
 
-    # auto_drive is a lightweight way to move the sliding cuboid with lidar feedback.
-    auto_drive = Node(
-        package="ros_test",
-        executable="auto_drive",
-        name="auto_drive",
-        output="screen",
-        parameters=[{"use_sim_time": use_sim_time}],
-        condition=IfCondition(auto_drive_enabled),
-    )
-
     # Timers stagger startup so bridges and transforms exist before consumers start.
     return LaunchDescription(
         [
@@ -302,11 +291,6 @@ def generate_launch_description():
                 "gazebo_gui",
                 default_value="true",
                 description="Set false to run Gazebo server-only without the GUI.",
-            ),
-            DeclareLaunchArgument(
-                "auto_drive",
-                default_value="false",
-                description="Set true to make the robot drive itself.",
             ),
             DeclareLaunchArgument(
                 "odom_tf",
@@ -343,7 +327,7 @@ def generate_launch_description():
             map_to_odom_static_tf,
             TimerAction(
                 period=2.0,
-                actions=[octomap_server, map_filter, map_monitor, auto_drive],
+                actions=[octomap_server, map_filter, map_monitor],
             ),
             TimerAction(period=8.0, actions=[rviz]),
         ]

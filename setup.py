@@ -27,7 +27,6 @@ setup(
     license="Apache-2.0",
     entry_points={
         "console_scripts": [
-            "auto_drive = ros_test.auto_drive:main",
             "map_filter = ros_test.map_filter:main",
             "map_monitor = ros_test.map_monitor:main",
             "odom_to_tf = ros_test.odom_to_tf:main",

@@ -48,7 +48,6 @@ sudo apt install \
   ros-jazzy-ros-gz-sim \
   ros-jazzy-rviz2 \
   ros-jazzy-sensor-msgs \
-  ros-jazzy-sensor-msgs-py \
   ros-jazzy-tf2-ros
 ```
 
@@ -70,7 +69,6 @@ source install/setup.bash
 The installed Python ROS executables are:
 
 ```text
-auto_drive
 map_filter
 map_monitor
 odom_to_tf
@@ -160,12 +158,7 @@ marks space observed by the 3D lidar, and the simulation lidar range is 12 m.
 
 ## Common Options
 
-Move the robot with the Gazebo Teleop panel, or enable the simple lidar-reactive
-driver:
-
-```bash
-ros2 launch ros_test gazebo_slam.launch.py run:=sim auto_drive:=true
-```
+Move the robot with the Gazebo Teleop panel.
 
 Disable OctoMap mapping:
 

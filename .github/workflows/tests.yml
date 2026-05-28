@@ -41,7 +41,6 @@ jobs:
             ros-jazzy-nav-msgs \
             ros-jazzy-rclpy \
             ros-jazzy-sensor-msgs \
-            ros-jazzy-sensor-msgs-py \
             ros-jazzy-tf2-ros
 
       - name: Build ROS package

@@ -26,5 +26,5 @@ def test_setup_entrypoints_match_nodes():
     """setup.py should expose all installed ROS helper node entrypoints."""
     text = Path("setup.py").read_text()
 
-    for entrypoint in ("auto_drive", "map_filter", "map_monitor", "odom_to_tf"):
+    for entrypoint in ("map_filter", "map_monitor", "odom_to_tf"):
         assert f"{entrypoint} = ros_test.{entrypoint}:main" in text

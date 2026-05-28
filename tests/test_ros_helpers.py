@@ -9,7 +9,7 @@ pytest.importorskip("nav_msgs.msg")
 
 from nav_msgs.msg import OccupancyGrid
 
-from ros_test import auto_drive, map_filter, map_monitor
+from ros_test import map_filter, map_monitor
 
 
 def make_grid(width, height, resolution=0.05):
@@ -59,20 +59,3 @@ def test_map_filter_publishes_non_empty_maps():
 
     assert node._publisher.published == [msg]
     assert node._published_first is True
-
-
-def test_auto_drive_sector_min_filters_points(monkeypatch):
-    """The sector scan should ignore invalid/high/behind points and keep the nearest obstacle."""
-    points = [
-        (2.0, 0.0, 0.0),
-        (0.5, 0.1, 0.0),
-        (0.2, 0.0, 1.5),
-        (-0.1, 0.0, 0.0),
-    ]
-    monkeypatch.setattr(auto_drive.point_cloud2, "read_points", lambda *_, **__: iter(points))
-
-    node = auto_drive.AutoDrive.__new__(auto_drive.AutoDrive)
-    node._cloud = object()
-    node._last_point_warning_ns = 0
-
-    assert node._sector_min(-0.35, 0.35) == pytest.approx(0.5099019514)
