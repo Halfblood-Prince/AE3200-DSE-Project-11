@@ -35,6 +35,11 @@ Main attributes of each `Propeller`:
 - key: integer RPM
 - value: power or thrust at that RPM
 
+If the requested RPM is not available exactly:
+- the closest valid RPM is used automatically
+- if two RPM values are equally close, the lower RPM is used
+- requests below `10000` or above `self.RPMmax` raise an error
+
 Example:
     from propulsion.propClass import load_propeller_dict
 
@@ -55,6 +60,52 @@ You can also load a single propeller directly:
 from pathlib import Path
 
 import pandas as pd
+
+
+class RPMLookup(dict):
+	"""Dictionary-like RPM lookup that snaps missing RPM requests to the nearest valid RPM."""
+
+	def __init__(
+		self,
+		rpm_to_value: dict[int, float],
+		min_rpm: int,
+		max_rpm: int,
+	) -> None:
+		super().__init__(sorted((int(rpm), float(value)) for rpm, value in rpm_to_value.items()))
+		self.min_rpm = int(min_rpm)
+		self.max_rpm = int(max_rpm)
+
+	def _validate_rpm(self, rpm: int | float) -> float:
+		requested_rpm = float(rpm)
+		if requested_rpm < self.min_rpm or requested_rpm > self.max_rpm:
+			raise ValueError(
+				f"RPM {rpm} is outside the valid range [{self.min_rpm}, {self.max_rpm}]"
+			)
+
+		return requested_rpm
+
+	def closest_rpm(self, rpm: int | float) -> int:
+		"""Return the closest valid RPM key."""
+
+		if not self:
+			raise KeyError("RPMLookup is empty")
+
+		requested_rpm = self._validate_rpm(rpm)
+		valid_rpms = list(self.keys())
+		return min(valid_rpms, key=lambda valid_rpm: (abs(valid_rpm - requested_rpm), valid_rpm))
+
+	def __getitem__(self, rpm: int | float) -> float:
+		closest_rpm = self.closest_rpm(rpm)
+		return super().__getitem__(closest_rpm)
+
+	def get(self, rpm: int | float, default: float | None = None) -> float | None:
+		if not self:
+			return default
+
+		try:
+			return self[rpm]
+		except (KeyError, TypeError, ValueError):
+			return default
 
 
 class Propeller:
@@ -87,18 +138,26 @@ class Propeller:
 		self.name = str(first_row["filename"])
 		self.Diameter = float(first_row["Diameter"])
 		self.Pitch = float(first_row["Pitch"])
-		self.RPMmin = int(first_row["RPM min"])
+		self.RPMmin = int(propeller_df["RPM"].min())
 		self.RPMmax = int(first_row["RPM max"])
 		self.Blades = int(first_row["Blades"])
 		self.Extension = str(first_row["Extension"])
-		self.Power = {
-			int(row["RPM"]): float(row["Power"])
-			for row in propeller_df[["RPM", "Power"]].to_dict("records")
-		}
-		self.Thrust = {
-			int(row["RPM"]): float(row["Thrust"])
-			for row in propeller_df[["RPM", "Thrust"]].to_dict("records")
-		}
+		self.Power = RPMLookup(
+			{
+				int(row["RPM"]): float(row["Power"])
+				for row in propeller_df[["RPM", "Power"]].to_dict("records")
+			},
+			min_rpm=self.RPMmin,
+			max_rpm=self.RPMmax,
+		)
+		self.Thrust = RPMLookup(
+			{
+				int(row["RPM"]): float(row["Thrust"])
+				for row in propeller_df[["RPM", "Thrust"]].to_dict("records")
+			},
+			min_rpm=self.RPMmin,
+			max_rpm=self.RPMmax,
+		)
 
 	@classmethod
 	def from_csv(cls, csv_path: str | Path, propeller_name: str) -> "Propeller":
@@ -124,10 +183,12 @@ def load_propeller_dict(csv_path: str | Path) -> dict[str, Propeller]:
 		for filename, group in propeller_df.groupby("filename", sort=False)
 	}
 if __name__ == "__main__":
-    x45E = Propeller.from_csv("propulsion/8.0_E.csv", "PER3_4x45E.dat")
+	x45E = Propeller.from_csv("propulsion/8.0_E.csv", "PER3_4x45E.dat")
 
-    print(x45E.name)
-    print(x45E.Power)
-    print(x45E.Thrust)
-    print(x45E.Power[13000])
-    print(x45E.Thrust[13000])
+	print(x45E.name)
+	print(x45E.Power)
+	print(x45E.Thrust)
+	print(x45E.Power[13000])
+	print(x45E.Thrust[13000])
+	print(x45E.Power[13500])
+	print(x45E.Power.closest_rpm(13500))
