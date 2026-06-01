@@ -18,7 +18,7 @@ dist/
 *.egg-info/
 
 # Local data files
-*.dat
+*.[dD][aA][tT]
 
 # Notebook and IDE files
 .ipynb_checkpoints/
