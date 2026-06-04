@@ -322,6 +322,6 @@ if __name__ == "__main__":
 	# print(f"Saved propeller data to {output_path}")
     df = pd.read_csv("propulsion/propellers_data.csv")
     # print(filter_propellers(df, max_diameter=8.0, extensions=["E"]))
-    df = build_static_propeller_table(df, max_diameter=6.0, extensions=["E"], strict_static_data=False) 
+    df = build_static_propeller_table(df, max_diameter=10.0, extensions=["E"], strict_static_data=False) 
     print(df)
-    df.to_csv("propulsion/6.0_E.csv", index=False)
+    df.to_csv("propulsion/10.0_E.csv", index=False)
