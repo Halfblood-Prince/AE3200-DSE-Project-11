@@ -36,6 +36,8 @@ struct BendingResult {
     double area = 0.0;
     double distributed_load = 0.0;
     double inertia = 0.0;
+    double max_shear_force = 0.0;
+    double z_at_max_shear_force = 0.0;
     double max_bending_moment = 0.0;
     double z_at_max_bending_moment = 0.0;
     double max_bending_stress = 0.0;
@@ -80,7 +82,18 @@ BendingResult calculate_bending(const BendingConfig& config) {
     result.inertia = area_moment_of_inertia(config.R, config.t);
     result.mass = result.area * config.L * config.material.density;
 
+    double max_abs_shear = -std::numeric_limits<double>::infinity();
     double max_abs_moment = -std::numeric_limits<double>::infinity();
+
+    const auto consider_shear = [&](double remaining_length) {
+        const double shear = -config.T + result.distributed_load * remaining_length;
+        const double abs_shear = std::abs(shear);
+        if (abs_shear > max_abs_shear) {
+            max_abs_shear = abs_shear;
+            result.max_shear_force = shear;
+            result.z_at_max_shear_force = config.L - remaining_length;
+        }
+    };
 
     const auto consider_moment = [&](double remaining_length) {
         const double moment =
@@ -94,6 +107,9 @@ BendingResult calculate_bending(const BendingConfig& config) {
             result.z_at_max_bending_moment = config.L - remaining_length;
         }
     };
+
+    consider_shear(0.0);
+    consider_shear(config.L);
 
     consider_moment(0.0);
     consider_moment(config.L);
@@ -154,6 +170,8 @@ void print_bending_result(const BendingConfig& config, const BendingResult& resu
     std::cout << "Cross-sectional area: " << result.area << " m^2\n";
     std::cout << "Distributed load w: " << result.distributed_load << " N/m\n";
     std::cout << "Second moment of area I: " << result.inertia << " m^4\n";
+    std::cout << "Maximum shear force: " << result.max_shear_force
+              << " N at z = " << result.z_at_max_shear_force << " m\n";
     std::cout << "Maximum bending moment: " << result.max_bending_moment
               << " Nm at z = " << result.z_at_max_bending_moment << " m\n";
     std::cout << "Maximum bending stress: " << result.max_bending_stress << " Pa\n";
