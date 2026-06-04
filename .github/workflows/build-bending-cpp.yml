@@ -1,0 +1,63 @@
+name: Build Bending C++ Binaries
+
+on:
+  push:
+    paths:
+      - "bending.cpp"
+      - ".github/workflows/build-bending-cpp.yml"
+  pull_request:
+    paths:
+      - "bending.cpp"
+      - ".github/workflows/build-bending-cpp.yml"
+  workflow_dispatch:
+
+jobs:
+  build-amd64:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux amd64
+            os: ubuntu-latest
+            artifact: bending-linux-amd64
+            binary: bending
+          - name: Windows amd64
+            os: windows-latest
+            artifact: bending-windows-amd64
+            binary: bending.exe
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Linux amd64 binary
+        if: runner.os == 'Linux'
+        run: g++ -std=c++17 -O3 -DNDEBUG -Wall -Wextra -pedantic bending.cpp -o bending
+
+      - name: Configure MSVC x64 environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build Windows amd64 binary
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: cl /std:c++17 /O2 /EHsc /W4 bending.cpp /Fe:bending.exe
+
+      - name: Smoke test Linux binary
+        if: runner.os == 'Linux'
+        run: ./bending
+
+      - name: Smoke test Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\bending.exe
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
