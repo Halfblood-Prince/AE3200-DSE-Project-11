@@ -52,6 +52,7 @@ struct SearchConfig {
     double r_step = 0.001;
     double t_min = 0.0005;
     double t_step = 0.005;
+    double max_tip_deflection = 0.004; // m
 };
 
 struct SearchResult {
@@ -167,7 +168,9 @@ SearchResult minimise_mass(const BendingConfig& base_config, const SearchConfig&
             const BendingResult bending = calculate_bending(config);
             ++best.checked_designs;
 
-            if (bending.max_bending_stress <= allowable_stress && bending.mass < best_mass) {
+            if (bending.max_bending_stress <= allowable_stress &&
+                bending.deflection <= search.max_tip_deflection &&
+                bending.mass < best_mass) {
                 best.found = true;
                 best.R = R;
                 best.t = t;
@@ -200,11 +203,17 @@ void print_bending_result(const BendingConfig& config, const BendingResult& resu
     std::cout << "Beam mass: " << result.mass << " kg\n";
 }
 
-void print_search_result(const BendingConfig& config, const SearchResult& result) {
+void print_search_result(
+    const BendingConfig& config,
+    const SearchConfig& search,
+    const SearchResult& result
+) {
     std::cout << "\nMass minimisation checked " << result.checked_designs << " designs.\n";
+    std::cout << "Tip deflection limit: " << search.max_tip_deflection << " m\n";
+    std::cout << "Tip deflection limit: " << search.max_tip_deflection * 1000.0 << " mm\n";
 
     if (!result.found) {
-        std::cout << "No feasible design found for the configured search range.\n";
+        std::cout << "No feasible design found for the configured search range and constraints.\n";
         return;
     }
 
@@ -238,8 +247,9 @@ int main() {
 
     print_bending_result(config, baseline);
 
-    const SearchResult optimum = minimise_mass(config, SearchConfig{});
-    print_search_result(config, optimum);
+    const SearchConfig search;
+    const SearchResult optimum = minimise_mass(config, search);
+    print_search_result(config, search, optimum);
 
     pause_if_launched_directly();
 
