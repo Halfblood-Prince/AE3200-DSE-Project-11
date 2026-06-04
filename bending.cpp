@@ -38,6 +38,7 @@ struct BendingResult {
     double inertia = 0.0;
     double max_shear_force = 0.0;
     double z_at_max_shear_force = 0.0;
+    double max_average_shear_stress = 0.0;
     double max_bending_moment = 0.0;
     double z_at_max_bending_moment = 0.0;
     double max_bending_stress = 0.0;
@@ -123,6 +124,7 @@ BendingResult calculate_bending(const BendingConfig& config) {
 
     result.max_bending_stress =
         std::abs(result.max_bending_moment) * config.R / result.inertia;
+    result.max_average_shear_stress = std::abs(result.max_shear_force) / result.area;
 
     return result;
 }
@@ -172,6 +174,10 @@ void print_bending_result(const BendingConfig& config, const BendingResult& resu
     std::cout << "Second moment of area I: " << result.inertia << " m^4\n";
     std::cout << "Maximum shear force: " << result.max_shear_force
               << " N at z = " << result.z_at_max_shear_force << " m\n";
+    std::cout << "Maximum average shear stress: "
+              << result.max_average_shear_stress << " Pa\n";
+    std::cout << "Maximum average shear stress: "
+              << result.max_average_shear_stress / 1e6 << " MPa\n";
     std::cout << "Maximum bending moment: " << result.max_bending_moment
               << " Nm at z = " << result.z_at_max_bending_moment << " m\n";
     std::cout << "Maximum bending stress: " << result.max_bending_stress << " Pa\n";
