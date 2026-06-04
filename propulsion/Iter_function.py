@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Tuple, Any
+from propClass import Propeller
 
 def Required_thrust(MTOW:float, thrust_to_weight_ratio=1.5)->float:
     T_req = thrust_to_weight_ratio * MTOW
@@ -36,8 +37,9 @@ def OEI_performance_check(N_prop:int, T_req:float, prop_type:Propeller, coaxial:
 
 def get_power_required(N_prop:int, T_req:float, prop_type:Propeller, coaxial:bool)->float|None:
     if coaxial:
-        eff_interference=0.9
-        T_prop = T_req / N_prop
+        #2coaxial propellers = 1.6 propellers planar Multirotor book
+        eff_interference=1.6
+        T_prop = T_req / N_prop*2/1.6
         for rpm, thrust in prop_type.Thrust.items():
             if thrust >= T_prop and rpm < prop_type.RPMmax:
                 #find required power for this thrust for all propellers
