@@ -12,16 +12,19 @@ from EPS.Iter_fuctions import power_after_efficiencies, battery_sizing
 coaxial = True
 N_prop = 8
 flight_time = 10 /60 #hours
-props = load_propeller_dict("propulsion/6.0_E.csv")  #change to correct diameter range
-MTOW =3.2 * 9.81 # mass * g    #change to initial guess
+props = load_propeller_dict("propulsion/8.0_E.csv")  #change to correct diameter range
+# MTOW =3.2 * 9.81 # mass * g    #change to initial guess
+MTOM = 3.2
 P_payload = 250   #W
 P_avionics = 50   #W
 Lipo_spec_energy = 250 #Wh/kg
-M_pay = 0
+M_pay = 1000
 M_avionics = 0
+M_structures = 700
 
 while True:
     '''Propulsion'''
+    MTOW = MTOM * 9.81
     #find all possible propellers that meet constrains and best options (lowest power consumption)
     (best, best_info), options = find_prop(MTOW, N_prop, props)
     print(best, best_info)
@@ -42,11 +45,11 @@ while True:
 
 
 
-    '''MTOW Update'''
-    MTOW_new = m_motor_tot + m_ESC_tot + m_battery + M_avionics + M_pay
+    '''MTOM Update'''
+    MTOM_new = m_motor_tot + m_ESC_tot + m_battery + M_avionics + M_pay + M_structures
     
-    if np.abs(MTOW_new-MTOW)/MTOW <= 0.01:
-        MTOW = MTOW_new
+    if np.abs(MTOM_new-MTOM)/MTOM <= 0.01:
+        MTOM = MTOM_new
         break
     else:
-        MTOW = MTOW_new
+        MTOM = MTOM_new
