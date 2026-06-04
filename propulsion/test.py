@@ -9,6 +9,7 @@ from Iter_function import find_prop, motor_mass, ESC_mass
 from EPS.Iter_fuctions import power_after_efficiencies, battery_sizing
 
 # for actual iteration loop test for both 6 and 8 propellers 
+coaxial = True
 N_prop = 8
 flight_time = 10 /60 #hours
 props = load_propeller_dict("propulsion/6.0_E.csv")  #change to 6.0_E  for 8 propellers and 8.0_E for 6 propellers (yes it is confusing, sorry)
@@ -24,4 +25,5 @@ P_bat = power_after_efficiencies(P_payload,P_avionics, P_propellers)
 Mass_battery = battery_sizing(P_bat, flight_time, Lipo_spec_energy)
 print(Mass_battery)
 m_motor, I_max = motor_mass(best_info)
-m_ESC = ESC_mass(I_max)
+m_motor_tot = m_motor * N_prop
+m_ESC_tot = ESC_mass(I_max) * N_prop
