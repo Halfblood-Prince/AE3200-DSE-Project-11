@@ -100,6 +100,9 @@ class Bending:
         fig.tight_layout()
         plt.show()
 
+    def calculate_deflection(self):
+        return (self.w*self.L**4)/(8*self.Y*self.inertia) + (self.T*self.L**3)/(3*self.Y*self.inertia)
+
     def minimise_mass(self):
         r_optimal, t_optimal = 0.0, 0.0
         c = 0
@@ -120,4 +123,3 @@ class Bending:
 
 
 bend = Bending()
-bend.minimise_mass()

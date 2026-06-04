@@ -42,6 +42,7 @@ struct BendingResult {
     double max_bending_moment = 0.0;
     double z_at_max_bending_moment = 0.0;
     double max_bending_stress = 0.0;
+    double deflection = 0.0;
     double mass = 0.0;
 };
 
@@ -72,7 +73,18 @@ double area_moment_of_inertia(double R, double t) {
     const double inner_radius_squared = inner_radius * inner_radius;
     return (PI / 4.0) *
            (outer_radius_squared * outer_radius_squared -
-            inner_radius_squared * inner_radius_squared);
+           inner_radius_squared * inner_radius_squared);
+}
+
+double calculate_deflection(const BendingConfig& config, const BendingResult& result) {
+    const double length_squared = config.L * config.L;
+    const double length_cubed = length_squared * config.L;
+    const double length_fourth = length_squared * length_squared;
+
+    return (result.distributed_load * length_fourth) /
+               (8.0 * config.material.youngs_modulus * result.inertia) +
+           (config.T * length_cubed) /
+               (3.0 * config.material.youngs_modulus * result.inertia);
 }
 
 BendingResult calculate_bending(const BendingConfig& config) {
@@ -125,6 +137,7 @@ BendingResult calculate_bending(const BendingConfig& config) {
     result.max_bending_stress =
         std::abs(result.max_bending_moment) * config.R / result.inertia;
     result.max_average_shear_stress = std::abs(result.max_shear_force) / result.area;
+    result.deflection = calculate_deflection(config, result);
 
     return result;
 }
@@ -198,6 +211,8 @@ void print_search_result(const BendingConfig& config, const SearchResult& result
     std::cout << "Optimal outer radius R: " << result.R << " m\n";
     std::cout << "Optimal wall thickness t: " << result.t << " m\n";
     std::cout << "Optimal beam mass: " << result.bending.mass << " kg\n";
+    std::cout << "Optimal tip deflection: " << result.bending.deflection << " m\n";
+    std::cout << "Optimal tip deflection: " << result.bending.deflection * 1000.0 << " mm\n";
     std::cout << "Safety-factor bending stress: "
               << config.safety_factor * result.bending.max_bending_stress / 1e6 << " MPa\n";
     std::cout << "Failure stress: " << config.material.failure_stress() / 1e6 << " MPa\n";
