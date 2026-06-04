@@ -4,6 +4,10 @@
 #include <iostream>
 #include <limits>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 namespace {
 
 constexpr double PI = 3.141592653589793238462643383279502884;
@@ -175,6 +179,18 @@ void print_search_result(const BendingConfig& config, const SearchResult& result
     std::cout << "Failure stress: " << config.material.failure_stress() / 1e6 << " MPa\n";
 }
 
+void pause_if_launched_directly() {
+#ifdef _WIN32
+    DWORD process_list[2];
+    const DWORD process_count = GetConsoleProcessList(process_list, 2);
+
+    if (process_count <= 1) {
+        std::cout << "\nPress Enter to close...";
+        std::cin.get();
+    }
+#endif
+}
+
 } // namespace
 
 int main() {
@@ -185,6 +201,8 @@ int main() {
 
     const SearchResult optimum = minimise_mass(config, SearchConfig{});
     print_search_result(config, optimum);
+
+    pause_if_launched_directly();
 
     return optimum.found ? 0 : 1;
 }
