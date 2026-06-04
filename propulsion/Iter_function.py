@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import numpy as np
-from typing import Tuple, Any
-from propClass import Propeller
+from typing import Tuple, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from propClass import Propeller
 
 def Required_thrust(MTOW:float, thrust_to_weight_ratio=1.5)->float:
     T_req = thrust_to_weight_ratio * MTOW
@@ -58,19 +62,19 @@ def get_power_required(N_prop:int, T_req:float, prop_type:Propeller, coaxial:boo
                 pass  
     return None
 
-def find_prop(MTOW:float,N_prop:int, prop_list:dict[str,Propeller])->Tuple[Tuple[str, dict[str|Any]], dict[str, dict]]:
+def find_prop(MTOW:float,N_prop:int, prop_list:dict[str,Propeller], coaxial:bool)->Tuple[Tuple[str, dict[str|Any]], dict[str, dict]]:
     options = dict()
     T_req = Required_thrust(MTOW)
     for name, prop in prop_list.items():
-        check, cond = OEI_performance_check(N_prop, T_req, prop)
+        check, cond = OEI_performance_check(N_prop, T_req, prop, coaxial)
         if check:
-            P_req = get_power_required(N_prop, T_req, prop)
+            P_req = get_power_required(N_prop, T_req, prop, coaxial)
             options[name]= {"OEI_condition": cond, "Power_required": P_req, "data":prop}
         else:
             pass
     best = 100000000000000000
-    save = None
     save_name = ''
+    save_info = None
     for opt in options:
         if options[opt]["Power_required"] < best:
             best = options[opt]["Power_required"]
@@ -78,7 +82,7 @@ def find_prop(MTOW:float,N_prop:int, prop_list:dict[str,Propeller])->Tuple[Tuple
             save_name = opt
         else:
             pass
-    return (save_name,save_info), options
+    return save_name,save_info, options
 
 def motor_mass(save_info:dict[str, Any])->tuple[float, float]:
     #save_info is a dictionary with {"OEI_condition": cond, "Power_required": P_req, "data":prop}, where cond is (rpm, thrust)
@@ -88,15 +92,17 @@ def motor_mass(save_info:dict[str, Any])->tuple[float, float]:
     #Battery max voltage 22.2 (6S batteries)
     kv = RPM_max / 22.2
     P_max = save_info["data"].Power[RPM_max]
-    I_max = P_max * 22.2
-    L_motor = 4.8910 * I_max**0.1751 * P_max**0.2476
+    I_max = P_max / 22.2
+    L_motor = 4.8910 * (I_max**0.1751) * (P_max**0.2476)
     D_motor = 41.45 * kv **(-0.1919)*P_max**0.1935
-    m_motor = 0.0109 * kv**0.5122 * P_max**(-0.1902) * np.log10(L_motor) ** 2.5582 * np.log10(D_motor)**12.8502 / 1000
+    m_motor = (0.0109 * kv**0.5122 * P_max**(-0.1902) * np.log10(L_motor) ** 2.5582 * np.log10(D_motor)**12.8502) / 1000
+    m_motor =0.1
     return m_motor, I_max
 
 def ESC_mass(I_max:float)->float:
     #in kg
-    return 0.8013*I_max**0.9727/1000
+    # return (0.8013*I_max**0.9727)/1000
+    return 0.04
 
 
 
