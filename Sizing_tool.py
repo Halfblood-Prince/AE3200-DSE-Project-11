@@ -11,7 +11,7 @@ from EPS.Iter_fuctions import power_after_efficiencies, battery_sizing
 
 coaxial = True
 N_prop = 8
-flight_time = 10 /60 #hours
+flight_time = 7 /60 #hours
 props = load_propeller_dict("propulsion/6.5_E_1000.csv")  #change to correct diameter range
 # MTOW =3.2 * 9.81 # mass * g    #change to initial guess
 MTOM = 3.2
@@ -56,7 +56,7 @@ while True:
         break
     else:
         MTOM = MTOM_new
-print(f'MTOW_new: {MTOM_new}')
+print(f'MTOM_new: {MTOM_new}[kg]')
 print(best)
 print(best_info["Power_required"]/8)
 print(best_info["data"].Power)
