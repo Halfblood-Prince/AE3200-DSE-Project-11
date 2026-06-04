@@ -27,7 +27,7 @@ struct BendingConfig {
     double t = 0.002;                 // wall thickness [m]
     double R = 0.01;                  // outer radius [m]
     double L = 0.25;                  // beam/arm length [m]
-    double T = 0.1;                   // propeller thrust [N]
+    double T = 10;                   // propeller thrust [N]
     double safety_factor = 1.5;
     Material material;
 };

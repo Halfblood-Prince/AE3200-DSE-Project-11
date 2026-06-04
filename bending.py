@@ -10,7 +10,7 @@ class Bending:
         self.t = 0.002          # wall thickness [m]
         self.R = 0.01           # outer radius [m]
         self.L = 0.25           # beam/arm length [m]
-        self.T = 0.1              # propeller thrust [N]
+        self.T = 10              # propeller thrust [N]
         self.SF = 1.5        # Safety factor
         self.rho = material.density     # material density [kg/m^3]
         self.resolution = 0.001         # calculation step size [m]
