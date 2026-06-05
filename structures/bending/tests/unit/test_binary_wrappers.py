@@ -74,6 +74,33 @@ def test_arm_wrapper_passes_configuration_to_arm_binary(monkeypatch):
     assert call["binary_path"] == "arm-test"
 
 
+def test_arm_wrapper_accepts_optional_length_and_tip_force(monkeypatch):
+    calls = []
+
+    def fake_run(component, command, options, binary_path):
+        calls.append((command, options))
+        return {}
+
+    monkeypatch.setattr(arm_wrapper, "run_binary", fake_run)
+    arm = arm_wrapper.Arm(
+        length=0.25,
+        thrust=10.0,
+        binary_path="arm-test",
+    )
+
+    arm.calculate(L=0.4, T=18.0)
+    arm.minimise_mass(L=0.35, T=15.0)
+
+    assert calls[0][0] == "calculate"
+    assert calls[0][1]["length"] == pytest.approx(0.4)
+    assert calls[0][1]["thrust"] == pytest.approx(18.0)
+    assert calls[1][0] == "optimize"
+    assert calls[1][1]["length"] == pytest.approx(0.35)
+    assert calls[1][1]["thrust"] == pytest.approx(15.0)
+    assert arm.length == pytest.approx(0.25)
+    assert arm.thrust == pytest.approx(10.0)
+
+
 def test_leg_wrapper_passes_search_range_to_leg_binary(monkeypatch):
     call = {}
 

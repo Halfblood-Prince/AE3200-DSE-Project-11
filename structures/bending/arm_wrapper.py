@@ -37,12 +37,12 @@ class Arm:
         if self.gravity is None:
             self.gravity = material_data.constants.g
 
-    def _configuration(self):
+    def _configuration(self, L=None, T=None):
         return {
             "thickness": self.thickness,
             "radius": self.radius,
-            "length": self.length,
-            "thrust": self.thrust,
+            "length": self.length if L is None else L,
+            "thrust": self.thrust if T is None else T,
             "safety-factor": self.safety_factor,
             "density": self.density,
             "youngs-modulus": self.youngs_modulus,
@@ -51,11 +51,11 @@ class Arm:
             "max-tip-deflection": self.max_tip_deflection,
         }
 
-    def calculate(self):
+    def calculate(self, L=None, T=None):
         return run_binary(
             "arm",
             "calculate",
-            self._configuration(),
+            self._configuration(L=L, T=T),
             self.binary_path,
         )
 
@@ -66,8 +66,10 @@ class Arm:
         radius_step=0.0001,
         thickness_min=0.0005,
         thickness_step=0.0001,
+        L=None,
+        T=None,
     ):
-        options = self._configuration()
+        options = self._configuration(L=L, T=T)
         options.update(
             {
                 "radius-min": radius_min,
