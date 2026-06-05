@@ -1,9 +1,12 @@
 # AE3200 DSE Project 11
 
-[![Bending Tests](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/bending-tests.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/bending-tests.yml)
+[![Unit Tests](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/unit-tests.yml)
+[![Subsystem Tests](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/subsystem-tests.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/subsystem-tests.yml)
+[![System Tests](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/system-tests.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/system-tests.yml)
+[![Edge Case Tests](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/edge-tests.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/edge-tests.yml)
+[![Coverage Check](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/coverage-check.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/coverage-check.yml)
 [![C++ Build](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/build-bending-cpp.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/build-bending-cpp.yml)
 [![CodeQL](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/codeql.yml/badge.svg)](https://github.com/Halfblood-Prince/AE3200-DSE-Project-11/actions/workflows/codeql.yml)
-[![codecov](https://codecov.io/gh/Halfblood-Prince/AE3200-DSE-Project-11/graph/badge.svg)](https://codecov.io/gh/Halfblood-Prince/AE3200-DSE-Project-11)
 
 Structural sizing tools for the AE3200 design project. The Python model
 calculates arm bending response and sizes a two-leg landing system against
@@ -130,16 +133,17 @@ Check branch coverage for `bending.py`:
 python -m pytest --cov=bending --cov-branch --cov-report=term-missing
 ```
 
-CI requires at least 90% branch coverage. The workflow also uploads
-`coverage.xml` as a downloadable artifact and reports coverage to Codecov.
+CI requires at least 90% branch coverage. The coverage workflow uploads
+`coverage.xml` as a downloadable GitHub Actions artifact.
 
 ## Continuous Integration
 
-The `Bending Tests` workflow runs every test layer independently and then runs
-the complete suite with coverage. The `Build C++ Binaries` workflow performs
-the six-platform matrix build and publishes `bin/`. CodeQL analyzes GitHub
-Actions, Python, and C++ on pushes to `main`, `master`, and
-`structures_bending`.
+Unit, subsystem, system, and edge-case tests run in separate workflows so each
+test layer has an independent status badge. The `Coverage Check` workflow runs
+the complete suite and enforces the 90% branch-coverage threshold. The
+`Build C++ Binaries` workflow performs the six-platform matrix build and
+publishes `bin/`. CodeQL analyzes GitHub Actions, Python, and C++ on pushes to
+`main`, `master`, and `structures_bending`.
 
 ## License
 
