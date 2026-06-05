@@ -47,7 +47,7 @@ def get_power_required(N_prop:int, T_req:float, prop_type:Propeller, coaxial:boo
         for rpm, thrust in prop_type.Thrust.items():
             if thrust >= T_prop and rpm < prop_type.RPMmax:
                 #find required power for this thrust for all propellers
-                P_req = prop_type.Power[rpm] * N_prop / eff_interference
+                P_req = prop_type.Power[rpm] * N_prop 
                 return P_req
             else:
                 pass    
@@ -64,10 +64,11 @@ def get_power_required(N_prop:int, T_req:float, prop_type:Propeller, coaxial:boo
 
 def find_prop(MTOW:float,N_prop:int, prop_list:dict[str,Propeller], coaxial:bool)->Tuple[Tuple[str, dict[str|Any]], dict[str, dict]]:
     options = dict()
-    T_req = Required_thrust(MTOW)
+    T_req_OEI = Required_thrust(MTOW)
     for name, prop in prop_list.items():
-        check, cond = OEI_performance_check(N_prop, T_req, prop, coaxial)
+        check, cond = OEI_performance_check(N_prop, T_req_OEI, prop, coaxial)
         if check:
+            T_req = Required_thrust(MTOW, thrust_to_weight_ratio=1)
             P_req = get_power_required(N_prop, T_req, prop, coaxial)
             options[name]= {"OEI_condition": cond, "Power_required": P_req, "data":prop}
         else:
