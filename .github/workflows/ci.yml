@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - Iterative_tool
   pull_request:
   workflow_dispatch:
 
