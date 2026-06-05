@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def shear_arm(V, t, tau_allow):
+def shear_arm(V: int, t: float, tau_allow: float = 50000) -> float:
     """
     Required outer radius Ro for a thick hollow circular rod under transverse shear.
 
