@@ -62,8 +62,8 @@ def shear_arm(V, t, tau_allow):
 
 if __name__ == "__main__":
     # Example usage:
-    V = 1000  # N
-    t = 0.01  # m
-    tau_allow = 250e6  # Pa (250 MPa)
+    V = 10  # N
+    t = 0.001  # m
+    tau_allow = 50e6  # Pa (50 MPa)
     required_Ro = shear_arm(V, t, tau_allow)
     print(f"Required outer radius Ro: {required_Ro:.4f} m")

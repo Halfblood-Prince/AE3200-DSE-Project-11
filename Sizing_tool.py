@@ -17,10 +17,12 @@ props = load_propeller_dict("propulsion/6.5_E_1000.csv")  #change to correct dia
 MTOM = 3.2
 P_payload = 250   #W
 P_avionics = 50   #W
-Lipo_spec_energy = 250 #Wh/kg
-M_pay = 1
+Lipo_spec_energy = 275 #Wh/kg
+M_pay = 1.2
 M_avionics = 0
-M_structures = 0.5
+M_structures = 0.328
+
+
 
 while True:
     '''Propulsion'''
@@ -44,7 +46,7 @@ while True:
 
     '''Structures'''
 
-
+    M_structures = .328
 
 
     '''MTOM Update'''
