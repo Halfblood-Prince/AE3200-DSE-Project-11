@@ -18,7 +18,7 @@ MTOM = 4
 P_payload = 150   #W
 P_avionics = 0   #W
 Lipo_spec_energy = 275 #Wh/kg
-M_pay = 1.56
+M_pay = 1.4
 M_avionics = 0
 M_structures = 0.5
 
