@@ -1,0 +1,18 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -p no:cacheprovider"
+markers = [
+    "unit: isolated formula and method tests",
+    "subsystem: interacting bending-analysis component tests",
+    "system: end-to-end bending optimization tests",
+    "edge: boundary and failure-mode tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["bending"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - structures_bending
   pull_request:
   schedule:
     - cron: "23 4 * * 1"
@@ -28,6 +29,7 @@ jobs:
       matrix:
         language:
           - actions
+          - c-cpp
           - python
 
     steps:
@@ -40,9 +42,12 @@ jobs:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
-      - name: Autobuild
-        if: matrix.language != 'actions'
-        uses: github/codeql-action/autobuild@v4
+      - name: Build C++ models
+        if: matrix.language == 'c-cpp'
+        run: |
+          mkdir -p codeql-build
+          c++ -std=c++17 -O2 cpp/arm.cpp -o codeql-build/arm
+          c++ -std=c++17 -O2 cpp/leg.cpp -o codeql-build/leg
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

@@ -1,63 +1,199 @@
-name: Build Bending C++ Binaries
+name: Build C++ Binaries
 
 on:
   push:
+    branches:
+      - main
+      - master
+      - structures_bending
     paths:
-      - "bending.cpp"
+      - "cpp/**"
+      - "arm_wrapper.py"
+      - "leg_wrapper.py"
+      - "binary_bridge.py"
       - ".github/workflows/build-bending-cpp.yml"
   pull_request:
     paths:
-      - "bending.cpp"
+      - "cpp/**"
+      - "arm_wrapper.py"
+      - "leg_wrapper.py"
+      - "binary_bridge.py"
       - ".github/workflows/build-bending-cpp.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: cpp-binaries-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-amd64:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+  build:
+    name: ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Linux amd64
-            os: ubuntu-latest
-            artifact: bending-linux-amd64
-            binary: bending
-          - name: Windows amd64
-            os: windows-latest
-            artifact: bending-windows-amd64
-            binary: bending.exe
+          - platform: linux
+            arch: amd64
+            runner: ubuntu-24.04
+            extension: ""
+            msvc_arch: ""
+            smoke_test: true
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            extension: ""
+            msvc_arch: ""
+            smoke_test: true
+          - platform: macos
+            arch: amd64
+            runner: macos-15-intel
+            extension: ""
+            msvc_arch: ""
+            smoke_test: true
+          - platform: macos
+            arch: arm64
+            runner: macos-15
+            extension: ""
+            msvc_arch: ""
+            smoke_test: true
+          - platform: windows
+            arch: amd64
+            runner: windows-2025
+            extension: ".exe"
+            msvc_arch: amd64
+            smoke_test: true
+          - platform: windows
+            arch: arm64
+            runner: windows-11-arm
+            extension: ".exe"
+            msvc_arch: ""
+            smoke_test: true
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Build Linux amd64 binary
-        if: runner.os == 'Linux'
-        run: g++ -std=c++17 -O3 -DNDEBUG -Wall -Wextra -pedantic bending.cpp -o bending
-
-      - name: Configure MSVC x64 environment
-        if: runner.os == 'Windows'
+      - name: Configure MSVC
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x64
+          arch: ${{ matrix.msvc_arch }}
 
-      - name: Build Windows amd64 binary
-        if: runner.os == 'Windows'
+      - name: Build Unix binaries
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p out
+          c++ -std=c++17 -O3 -DNDEBUG -Wall -Wextra -pedantic \
+            cpp/arm.cpp \
+            -o "out/arm-${{ matrix.platform }}-${{ matrix.arch }}"
+          c++ -std=c++17 -O3 -DNDEBUG -Wall -Wextra -pedantic \
+            cpp/leg.cpp \
+            -o "out/leg-${{ matrix.platform }}-${{ matrix.arch }}"
+
+      - name: Build Windows binaries
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path out -Force | Out-Null
+          cl /nologo /std:c++17 /O2 /EHsc /W4 cpp\arm.cpp `
+            "/Fe:out\arm-${{ matrix.platform }}-${{ matrix.arch }}.exe" `
+            /Fo:out\arm.obj
+          cl /nologo /std:c++17 /O2 /EHsc /W4 cpp\leg.cpp `
+            "/Fe:out\leg-${{ matrix.platform }}-${{ matrix.arch }}.exe" `
+            /Fo:out\leg.obj
+
+      - name: Build Windows ARM64 binaries
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
         shell: cmd
-        run: cl /std:c++17 /O2 /EHsc /W4 bending.cpp /Fe:bending.exe
+        run: |
+          @echo off
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VSINSTALL=%%i"
+          if not defined VSINSTALL exit /b 1
+          call "%VSINSTALL%\Common7\Tools\VsDevCmd.bat" -arch=arm64 -host_arch=arm64 -no_logo
+          if errorlevel 1 exit /b 1
+          if not exist out mkdir out
+          cl /nologo /std:c++17 /O2 /EHsc /W4 cpp\arm.cpp /Fe:out\arm-windows-arm64.exe /Fo:out\arm.obj
+          if errorlevel 1 exit /b 1
+          cl /nologo /std:c++17 /O2 /EHsc /W4 cpp\leg.cpp /Fe:out\leg-windows-arm64.exe /Fo:out\leg.obj
+          if errorlevel 1 exit /b 1
 
-      - name: Smoke test Linux binary
-        if: runner.os == 'Linux'
-        run: ./bending
+      - name: Smoke test Unix binaries
+        if: runner.os != 'Windows' && matrix.smoke_test
+        shell: bash
+        run: |
+          "out/arm-${{ matrix.platform }}-${{ matrix.arch }}" calculate \
+            | python3 -c "import json, sys; json.load(sys.stdin)"
+          "out/leg-${{ matrix.platform }}-${{ matrix.arch }}" calculate \
+            | python3 -c "import json, sys; json.load(sys.stdin)"
 
-      - name: Smoke test Windows binary
+      - name: Smoke test Windows binaries
+        if: runner.os == 'Windows' && matrix.smoke_test
+        shell: pwsh
+        run: |
+          & "out\arm-${{ matrix.platform }}-${{ matrix.arch }}.exe" calculate `
+            | ConvertFrom-Json | Out-Null
+          & "out\leg-${{ matrix.platform }}-${{ matrix.arch }}.exe" calculate `
+            | ConvertFrom-Json | Out-Null
+
+      - name: Remove compiler intermediates
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\bending.exe
+        run: Remove-Item -Path out\*.obj -Force
 
-      - name: Upload binary artifact
+      - name: Upload target binaries
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.binary }}
+          name: binaries-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            out/arm-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.extension }}
+            out/leg-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.extension }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish binaries to bin
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out triggering branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Download all target binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: staging
+          merge-multiple: true
+
+      - name: Replace bin directory
+        shell: bash
+        run: |
+          rm -rf bin
+          mkdir bin
+          cp staging/* bin/
+          chmod +x bin/arm-linux-* bin/leg-linux-*
+          chmod +x bin/arm-macos-* bin/leg-macos-*
+
+      - name: Commit and push generated binaries
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A bin
+          if git diff --cached --quiet; then
+            echo "Compiled binaries are already current."
+            exit 0
+          fi
+          git commit -m "build: refresh compiled binaries [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

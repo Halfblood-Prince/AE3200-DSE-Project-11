@@ -12,6 +12,7 @@ class LegOptimizerWindow:
         self.root.minsize(760, 520)
 
         self.material = materials.leg
+        self.number_of_legs = 2
         self.pending_update = None
 
         self.radius_var = tk.DoubleVar(value=5.0)      # mm
@@ -204,8 +205,20 @@ class LegOptimizerWindow:
 
         area = pi * radius**2
         inertia = (pi * radius**4) / 4
-        bending_force = mass_vehicle * materials.constants.g * sin(angle) * safety_factor / 4
-        axial_force = mass_vehicle * materials.constants.g * cos(angle) * safety_factor / 4
+        bending_force = (
+            mass_vehicle
+            * materials.constants.g
+            * sin(angle)
+            * safety_factor
+            / self.number_of_legs
+        )
+        axial_force = (
+            mass_vehicle
+            * materials.constants.g
+            * cos(angle)
+            * safety_factor
+            / self.number_of_legs
+        )
         bending_moment = bending_force * length
 
         tip_deflection = (bending_force * length**3) / (3 * self.material.youngs_modulus * inertia)
@@ -215,7 +228,7 @@ class LegOptimizerWindow:
             abs(axial_force) * length / (self.material.youngs_modulus * area)
         )
         governing_stress = max(abs(bending_stress), compressive_stress)
-        leg_mass = area * length * self.material.density
+        leg_mass = area * length * self.material.density * safety_factor
 
         effective_length = effective_length_factor * length
         buckling_load = (pi**2 * self.material.youngs_modulus * inertia) / effective_length**2
