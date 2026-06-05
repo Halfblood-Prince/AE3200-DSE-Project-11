@@ -26,7 +26,7 @@ def struct_size(MTOM: float, thrust: float, length: float, height: float = 0.3, 
     materials_file = Path(__file__).resolve().parent / "bending" / "materials.py"
 
     arm = Arm(materials_file=materials_file, length=length, thrust=thrust)
-    leg = Leg(materials_file=materials_file, height=height, vehicle_mass=MTOM)
+    leg = Leg(materials_file=materials_file, height=height, vehicle_mass=MTOM, max_tip_deflection=1)
 
     arm_results = arm.calculate()
     max_shear_force = arm_results["max_shear_force"]
