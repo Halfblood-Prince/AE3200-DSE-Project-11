@@ -16,6 +16,7 @@ class arm:
     shear_modulus = youngs_modulus / (2 * (1 + poisson_ratio))
     specific_stiffness = youngs_modulus / density
     specific_strength = failure_stress / density
+    failure_shear_stress = 50e6 # Pa
 
 class leg:
     # Temporarily Aluminium 6061-T6
@@ -33,3 +34,4 @@ class leg:
     shear_modulus = youngs_modulus / (2 * (1 + poisson_ratio))
     specific_stiffness = youngs_modulus / density
     specific_strength = failure_stress / density
+    failure_shear_stress = 200e6 # Pa

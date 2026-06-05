@@ -1,0 +1,56 @@
+from pathlib import Path
+import sys
+
+if __package__:
+    from .bending.arm_wrapper import Arm
+    from .bending.leg_wrapper import Leg
+    from .shear import shear_arm
+else:
+    structures_dir = Path(__file__).resolve().parent
+    if str(structures_dir) not in sys.path:
+        sys.path.insert(0, str(structures_dir))
+
+    from bending.arm_wrapper import Arm
+    from bending.leg_wrapper import Leg
+    from shear import shear_arm
+
+import numpy as np
+
+
+
+def struct_size(MTOM: float, thrust: float, length: float, height: float = 0.3, n: int = 8, coaxial: bool = True) -> float:
+
+    if coaxial: arms = n // 2
+    else: arms = n
+    
+    materials_file = Path(__file__).resolve().parent / "bending" / "materials.py"
+
+    arm = Arm(materials_file=materials_file, length=length, thrust=thrust)
+    leg = Leg(materials_file=materials_file, height=height, vehicle_mass=MTOM)
+
+    arm_results = arm.calculate()
+    max_shear_force = arm_results["max_shear_force"]
+    max_allowed_shear = arm.failure_shear_stress / arm.safety_factor
+
+    rmin = shear_arm(V=np.abs(max_shear_force), t=arm.thickness, tau_allow=max_allowed_shear)
+
+    best_arm = arm.minimise_mass(L=length, T=thrust, radius_min=rmin)
+    best_leg = leg.minimise_mass()
+
+    if not best_arm.get("found"):
+        raise RuntimeError("No feasible arm design found in the configured search range.")
+    if not best_leg.get("found"):
+        raise RuntimeError("No feasible leg design found in the configured search range.")
+
+    best_arm_mass = best_arm["design"]["mass"]
+    best_leg_mass = best_leg["design"]["mass"]
+
+    return arms * best_arm_mass + leg.number_of_legs * best_leg_mass + 0.3
+
+if __name__ == "__main__":
+    length = 0.1
+    thrust = 10
+    height = 0.3
+    MTOM = 4
+    mass = struct_size(MTOM, thrust, length, height)
+    print(f"Estimated structure mass: {mass:.3f} kg")

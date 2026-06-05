@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from binary_bridge import load_materials_file, run_binary
+try:
+    from .binary_bridge import load_materials_file, run_binary
+except ImportError:
+    from binary_bridge import load_materials_file, run_binary
 
 
 @dataclass

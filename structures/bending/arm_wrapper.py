@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from binary_bridge import load_materials_file, run_binary
+try:
+    from .binary_bridge import load_materials_file, run_binary
+except ImportError:
+    from binary_bridge import load_materials_file, run_binary
 
 
 @dataclass
@@ -15,6 +18,7 @@ class Arm:
     density: float | None = None
     youngs_modulus: float | None = None
     failure_stress: float | None = None
+    failure_shear_stress: float | None = None
     gravity: float | None = None
     max_tip_deflection: float | None = None
     binary_path: str | None = None
@@ -30,6 +34,8 @@ class Arm:
             self.youngs_modulus = material_data.arm.youngs_modulus
         if self.failure_stress is None:
             self.failure_stress = material_data.arm.failure_stress
+        if self.failure_shear_stress is None:
+            self.failure_shear_stress = material_data.arm.failure_shear_stress
         if self.safety_factor is None:
             self.safety_factor = material_data.arm.safety_factor
         if self.max_tip_deflection is None:
