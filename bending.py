@@ -1,20 +1,21 @@
-from math import pi
+from math import pi, sin, cos, radians
 import numpy as np
 import matplotlib.pyplot as plt
 
-import material
+
+import materials
 
 
-class Bending:
+class Arm:
     def __init__(self):
         self.t = 0.002          # wall thickness [m]
         self.R = 0.01           # outer radius [m]
         self.L = 0.25           # beam/arm length [m]
         self.T = 10              # propeller thrust [N]
         self.SF = 1.5        # Safety factor
-        self.rho = material.density     # material density [kg/m^3]
+        self.rho = materials.arm.density     # material density [kg/m^3]
         self.resolution = 0.001         # calculation step size [m]
-        self.Y = material.youngs_modulus
+        self.Y = materials.arm.youngs_modulus
         self.area = None
         self.inertia = None
         self.w = None
@@ -122,4 +123,180 @@ class Bending:
         print(r, t)
 
 
-bend = Bending()
+class Leg:
+    def __init__(self, m):
+        self.E = materials.leg.youngs_modulus
+        self.rho = materials.leg.density
+        self.yield_strength = materials.leg.yield_strength
+        self.m = m
+        self.area = 0.0
+        self.I = 0
+        self.g = materials.constants.g
+        self.angle_deg = 30
+        self.angle = radians(self.angle_deg)
+        self.R = 0.005
+        self.SF = 1.5
+        self.L = 0.1
+        self.effective_length_factor = 1.0
+        self.max_compressive_deformation = 0.01e-3
+        self.bending_force = 0.0
+        self.bending_moment = 0.0
+        self.axial_force = 0.0
+        self.longitudinal_compressive_stress = 0.0
+        self.longitudinal_deflection = 0.0
+        self.maximum_normal_stress = 0.0
+        self.euler_buckling_load = 0.0
+        self.buckling_margin = 0.0
+        self.buckling_safe = False
+        self.tip_deflection = 0.0
+        self.sigma_z_max = 0.0
+        self.mass = 0.0
+        self.checked_designs = 0
+
+    def calculate_max_bending_stress(self):
+        self.area = pi * self.R**2
+        self.I = (pi*self.R**4)/4
+        self.bending_force = self.m * self.g * sin(self.angle) * self.SF/4
+        self.bending_moment = self.bending_force * self.L
+        self.tip_deflection = (self.bending_force * self.L**3)/(3*self.E*self.I)
+        self.sigma_z_max = (self.bending_moment/self.I)*self.R
+        self.mass = self.area * self.L * self.rho
+        self.calculate_uniaxial_compression_and_deflection()
+        self.maximum_normal_stress = max(
+            abs(self.sigma_z_max),
+            self.longitudinal_compressive_stress,
+        )
+        self.calculate_euler_buckling()
+
+    def calculate_uniaxial_compression_and_deflection(self):
+        if self.area == 0:
+            self.area = pi * self.R**2
+
+        self.axial_force = self.m * self.g * cos(self.angle) * self.SF/4
+        self.longitudinal_compressive_stress = abs(self.axial_force) / self.area
+        self.longitudinal_deflection = abs(self.axial_force) * self.L / (self.E * self.area)
+        self.maximum_normal_stress = max(
+            abs(self.sigma_z_max),
+            self.longitudinal_compressive_stress,
+        )
+        return self.longitudinal_compressive_stress, self.longitudinal_deflection
+
+    def calculate_euler_buckling(self, effective_length_factor=None):
+        if effective_length_factor is not None:
+            self.effective_length_factor = effective_length_factor
+
+        if self.I == 0:
+            self.area = pi * self.R**2
+            self.I = (pi*self.R**4)/4
+
+        effective_length = self.effective_length_factor * self.L
+        self.calculate_uniaxial_compression_and_deflection()
+        self.euler_buckling_load = (pi**2 * self.E * self.I)/(effective_length**2)
+
+        if self.axial_force == 0:
+            self.buckling_margin = float("inf")
+        else:
+            self.buckling_margin = self.euler_buckling_load / abs(self.axial_force)
+
+        self.buckling_safe = self.euler_buckling_load >= abs(self.axial_force)
+        return self.euler_buckling_load
+
+    def minimise_mass(
+        self,
+        angle_min=5.0,
+        angle_max=60.0,
+        angle_step=1.0,
+        R_min=0.001,
+        R_max=0.05,
+        R_step=0.0001,
+        max_tip_deflection=0.01e-3,
+    ):
+        best = None
+        self.checked_designs = 0
+
+        for angle_deg in np.arange(angle_min, angle_max + 0.5 * angle_step, angle_step):
+            angle = radians(angle_deg)
+            bending_force = self.m * self.g * sin(angle) * self.SF/4
+            bending_moment = bending_force * self.L
+            axial_force = self.m * self.g * cos(angle) * self.SF/4
+
+            for R in np.arange(R_min, R_max + 0.5 * R_step, R_step):
+                area = pi * R**2
+                I = (pi * R**4)/4
+                tip_deflection = (bending_force * self.L**3)/(3*self.E*I)
+                sigma_z_max = (bending_moment/I)*R
+                longitudinal_compressive_stress = abs(axial_force) / area
+                longitudinal_deflection = abs(axial_force) * self.L / (self.E * area)
+                maximum_normal_stress = max(
+                    abs(sigma_z_max),
+                    longitudinal_compressive_stress,
+                )
+                mass = area * self.L * self.rho
+                self.checked_designs += 1
+
+                if (
+                    tip_deflection <= max_tip_deflection and
+                    longitudinal_deflection <= self.max_compressive_deformation and
+                    maximum_normal_stress <= self.yield_strength
+                ):
+                    if best is None or mass < best["mass"]:
+                        best = {
+                            "angle_deg": angle_deg,
+                            "angle": angle,
+                            "R": R,
+                            "area": area,
+                            "I": I,
+                            "bending_force": bending_force,
+                            "bending_moment": bending_moment,
+                            "axial_force": axial_force,
+                            "tip_deflection": tip_deflection,
+                            "sigma_z_max": sigma_z_max,
+                            "longitudinal_compressive_stress": longitudinal_compressive_stress,
+                            "longitudinal_deflection": longitudinal_deflection,
+                            "maximum_normal_stress": maximum_normal_stress,
+                            "mass": mass,
+                        }
+
+        if best is None:
+            print("No feasible leg design found for the configured search range.")
+            return None
+
+        self.angle_deg = best["angle_deg"]
+        self.angle = best["angle"]
+        self.R = best["R"]
+        self.area = best["area"]
+        self.I = best["I"]
+        self.bending_force = best["bending_force"]
+        self.bending_moment = best["bending_moment"]
+        self.axial_force = best["axial_force"]
+        self.tip_deflection = best["tip_deflection"]
+        self.sigma_z_max = best["sigma_z_max"]
+        self.longitudinal_compressive_stress = best["longitudinal_compressive_stress"]
+        self.longitudinal_deflection = best["longitudinal_deflection"]
+        self.maximum_normal_stress = best["maximum_normal_stress"]
+        self.mass = best["mass"]
+
+        print("Checked leg designs:", self.checked_designs)
+        print("Optimal leg angle:", self.angle_deg, "deg")
+        print("Optimal leg radius:", self.R*1000, "mm")
+        print("Optimal leg mass:", self.mass*1000, "g")
+        print("Tip deflection:", self.tip_deflection*1000, "mm")
+        print("Maximum compressive deformation limit:", self.max_compressive_deformation * 1000, "mm")
+        print("Maximum bending stress:", self.sigma_z_max / 1e6, "MPa")
+        print("Governing normal stress:", self.maximum_normal_stress / 1e6, "MPa")
+        print("Yield stress:", self.yield_strength / 1e6, "MPa")
+        print("Euler buckling load:", self.calculate_euler_buckling(), "N")
+        print("Axial compressive load:", self.axial_force, "N")
+        print("Longitudinal compressive stress:", self.longitudinal_compressive_stress / 1e6, "MPa")
+        print("Longitudinal deflection:", self.longitudinal_deflection * 1000, "mm")
+        print("Buckling margin:", self.buckling_margin)
+
+        return best
+
+
+leg = Leg(4.5)
+leg.minimise_mass()
+"""
+arm = Arm()
+arm.minimise_mass()
+"""
