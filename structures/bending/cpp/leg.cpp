@@ -39,6 +39,8 @@ private:
 
 struct LegResult {
     double angle_deg = 0.0;
+    double height = 0.0;
+    double length = 0.0;
     double radius = 0.0;
     double area = 0.0;
     double inertia = 0.0;
@@ -73,7 +75,7 @@ public:
     double angle_deg = 30.0;
     double radius = 0.005;
     double safety_factor = 1.5;
-    double length = 0.1;
+    double height = 0.1;
     double effective_length_factor = 1.0;
     double max_tip_deflection = 0.005e-3;
     double max_compressive_deformation = 0.01e-3;
@@ -84,7 +86,11 @@ public:
 
         LegResult result;
         const double angle = angle_deg * PI / 180.0;
+        const double angle_cosine = std::cos(angle);
+        const double length = height / angle_cosine;
         result.angle_deg = angle_deg;
+        result.height = height;
+        result.length = length;
         result.radius = radius;
         result.area = PI * radius * radius;
         result.inertia = PI * std::pow(radius, 4) / 4.0;
@@ -92,7 +98,7 @@ public:
             vehicle_mass * gravity * std::sin(angle) *
             safety_factor / static_cast<double>(number_of_legs);
         result.axial_force =
-            vehicle_mass * gravity * std::cos(angle) *
+            vehicle_mass * gravity * angle_cosine *
             safety_factor / static_cast<double>(number_of_legs);
         result.bending_moment = result.bending_force * length;
         result.tip_deflection =
@@ -178,10 +184,12 @@ public:
 
 private:
     void validate() const {
+        const double angle = angle_deg * PI / 180.0;
         if (vehicle_mass < 0.0 || density <= 0.0 ||
             youngs_modulus <= 0.0 || yield_strength <= 0.0 ||
             gravity <= 0.0 ||
-            radius <= 0.0 || safety_factor <= 0.0 || length <= 0.0 ||
+            radius <= 0.0 || safety_factor <= 0.0 || height <= 0.0 ||
+            std::cos(angle) <= 0.0 ||
             effective_length_factor <= 0.0 ||
             max_tip_deflection < 0.0 ||
             max_compressive_deformation < 0.0 ||
@@ -196,7 +204,7 @@ Leg leg_from_arguments(const Arguments& arguments) {
     leg.vehicle_mass = arguments.number("mass", leg.vehicle_mass);
     leg.radius = arguments.number("radius", leg.radius);
     leg.angle_deg = arguments.number("angle-deg", leg.angle_deg);
-    leg.length = arguments.number("length", leg.length);
+    leg.height = arguments.number("height", leg.height);
     leg.safety_factor =
         arguments.number("safety-factor", leg.safety_factor);
     leg.number_of_legs =
@@ -234,6 +242,8 @@ void print_result(const LegResult& result) {
     std::cout << std::setprecision(17)
               << "{"
               << "\"angle_deg\":" << result.angle_deg << ","
+              << "\"height\":" << result.height << ","
+              << "\"length\":" << result.length << ","
               << "\"radius\":" << result.radius << ","
               << "\"area\":" << result.area << ","
               << "\"inertia\":" << result.inertia << ","

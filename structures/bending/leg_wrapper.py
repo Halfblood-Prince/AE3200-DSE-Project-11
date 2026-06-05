@@ -9,7 +9,7 @@ class Leg:
     vehicle_mass: float = 4.5
     radius: float = 0.005
     angle_deg: float = 30.0
-    length: float = 0.1
+    height: float = 0.1
     safety_factor: float | None = None
     number_of_legs: int = 2
     materials_file: str | Path = Path(__file__).with_name("materials.py")
@@ -49,7 +49,7 @@ class Leg:
             "mass": self.vehicle_mass,
             "radius": self.radius,
             "angle-deg": self.angle_deg,
-            "length": self.length,
+            "height": self.height,
             "safety-factor": self.safety_factor,
             "number-of-legs": self.number_of_legs,
             "density": self.density,

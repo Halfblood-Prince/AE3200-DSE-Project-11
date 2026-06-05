@@ -153,7 +153,7 @@ arm = Arm(
 | `vehicle_mass` | kg | `4.5` | Total supported vehicle mass |
 | `radius` | m | `0.005` | Leg radius used by `calculate()` |
 | `angle_deg` | deg | `30.0` | Leg angle used by `calculate()` |
-| `length` | m | `0.1` | Leg length |
+| `height` | m | `0.1` | Vertical leg height used to calculate length |
 | `safety_factor` | - | `materials.leg.safety_factor` | Load and mass safety factor |
 | `number_of_legs` | - | `2` | Number of legs sharing the vehicle load |
 | `materials_file` | path | Local `materials.py` | Alternative material configuration |
@@ -173,7 +173,7 @@ leg = Leg(
     vehicle_mass=5.0,
     radius=0.006,
     angle_deg=25.0,
-    length=0.12,
+    height=0.12,
     safety_factor=2.0,
     number_of_legs=2,
     materials_file="materials.py",
@@ -286,6 +286,13 @@ leg_result = leg.calculate()
 deflections, mass, Euler buckling load, buckling margin, buckling safety, and
 overall feasibility.
 
+The leg length is calculated from the configured vertical height and active
+leg angle:
+
+```text
+length = height / cos(angle)
+```
+
 The vehicle load is shared across `number_of_legs`, which defaults to two.
 
 ### Minimize Leg Mass
@@ -367,10 +374,10 @@ Run the interactive GUI:
 python leg_optimizer_gui.py
 ```
 
-The GUI allows the user to change leg radius, angle, vehicle mass, leg length,
-safety factor, Euler effective-length factor, and deformation limits. It
-reports forces, stresses, deflections, mass, buckling performance, and overall
-feasibility.
+The GUI allows the user to change leg radius, angle, vehicle mass, vertical
+height, safety factor, Euler effective-length factor, and deformation limits.
+It calculates and reports leg length along with forces, stresses, deflections,
+mass, buckling performance, and overall feasibility.
 
 ## Testing
 

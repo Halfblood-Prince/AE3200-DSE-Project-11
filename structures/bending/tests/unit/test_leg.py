@@ -1,4 +1,4 @@
-from math import cos, pi, sin
+from math import cos, pi, radians, sin
 
 import pytest
 
@@ -21,6 +21,15 @@ def test_leg_design_limits_come_from_materials():
     )
 
 
+def test_leg_length_is_calculated_from_height_and_angle():
+    leg = Leg(4.5)
+    leg.height = 0.12
+    leg.angle_deg = 60.0
+    leg.angle = radians(leg.angle_deg)
+
+    assert leg.L == pytest.approx(leg.height / cos(leg.angle))
+
+
 def test_leg_full_calculation_matches_closed_form_equations():
     leg = Leg(4.5)
 
@@ -39,6 +48,7 @@ def test_leg_full_calculation_matches_closed_form_equations():
     assert leg.I == pytest.approx(expected_inertia)
     assert leg.bending_force == pytest.approx(expected_bending_force)
     assert leg.axial_force == pytest.approx(expected_axial_force)
+    assert leg.L == pytest.approx(leg.height / cos(leg.angle))
     assert leg.bending_moment == pytest.approx(expected_bending_force * leg.L)
     assert leg.mass == pytest.approx(
         expected_area * leg.L * leg.rho * leg.SF

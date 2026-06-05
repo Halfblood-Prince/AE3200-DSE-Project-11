@@ -138,7 +138,7 @@ class Leg:
         self.angle = radians(self.angle_deg)
         self.R = 0.005
         self.SF = materials.leg.safety_factor
-        self.L = 0.1
+        self.height = 0.1
         self.effective_length_factor = 1.0
         self.max_tip_deflection = materials.leg.max_tip_deflection
         self.max_compressive_deformation = (
@@ -157,6 +157,13 @@ class Leg:
         self.sigma_z_max = 0.0
         self.mass = 0.0
         self.checked_designs = 0
+
+    @property
+    def L(self):
+        angle_cosine = cos(self.angle)
+        if angle_cosine <= 0:
+            raise ValueError("Leg angle must give a positive vertical projection.")
+        return self.height / angle_cosine
 
     def calculate_max_bending_stress(self):
         self.area = pi * self.R**2
@@ -228,26 +235,32 @@ class Leg:
 
         for angle_deg in np.arange(angle_min, angle_max + 0.5 * angle_step, angle_step):
             angle = radians(angle_deg)
+            angle_cosine = cos(angle)
+            if angle_cosine <= 0:
+                raise ValueError(
+                    "Leg angle must give a positive vertical projection."
+                )
+            length = self.height / angle_cosine
             bending_force = (
                 self.m * self.g * sin(angle) * self.SF / self.number_of_legs
             )
-            bending_moment = bending_force * self.L
+            bending_moment = bending_force * length
             axial_force = (
-                self.m * self.g * cos(angle) * self.SF / self.number_of_legs
+                self.m * self.g * angle_cosine * self.SF / self.number_of_legs
             )
 
             for R in np.arange(R_min, R_max + 0.5 * R_step, R_step):
                 area = pi * R**2
                 I = (pi * R**4)/4
-                tip_deflection = (bending_force * self.L**3)/(3*self.E*I)
+                tip_deflection = (bending_force * length**3)/(3*self.E*I)
                 sigma_z_max = (bending_moment/I)*R
                 longitudinal_compressive_stress = abs(axial_force) / area
-                longitudinal_deflection = abs(axial_force) * self.L / (self.E * area)
+                longitudinal_deflection = abs(axial_force) * length / (self.E * area)
                 maximum_normal_stress = max(
                     abs(sigma_z_max),
                     longitudinal_compressive_stress,
                 )
-                effective_length = self.effective_length_factor * self.L
+                effective_length = self.effective_length_factor * length
                 euler_buckling_load = (pi**2 * self.E * I)/(effective_length**2)
                 buckling_margin = (
                     float("inf")
@@ -255,7 +268,7 @@ class Leg:
                     else euler_buckling_load / abs(axial_force)
                 )
                 buckling_safe = euler_buckling_load >= abs(axial_force)
-                mass = area * self.L * self.rho * self.SF
+                mass = area * length * self.rho * self.SF
                 self.checked_designs += 1
 
                 if (
@@ -268,6 +281,7 @@ class Leg:
                         best = {
                             "angle_deg": angle_deg,
                             "angle": angle,
+                            "length": length,
                             "R": R,
                             "area": area,
                             "I": I,

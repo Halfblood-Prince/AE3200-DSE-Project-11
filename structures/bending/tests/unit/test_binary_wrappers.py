@@ -115,7 +115,10 @@ def test_leg_wrapper_passes_search_range_to_leg_binary(monkeypatch):
 
     monkeypatch.setattr(leg_wrapper, "run_binary", fake_run)
 
-    result = leg_wrapper.Leg(binary_path="leg-test").minimise_mass(
+    result = leg_wrapper.Leg(
+        height=0.08,
+        binary_path="leg-test",
+    ).minimise_mass(
         radius_max=0.02
     )
 
@@ -123,6 +126,8 @@ def test_leg_wrapper_passes_search_range_to_leg_binary(monkeypatch):
     assert call["component"] == "leg"
     assert call["command"] == "optimize"
     assert call["options"]["number-of-legs"] == 2
+    assert call["options"]["height"] == pytest.approx(0.08)
+    assert "length" not in call["options"]
     assert call["options"]["gravity"] == pytest.approx(9.81)
     assert call["options"]["radius-max"] == pytest.approx(0.02)
     assert call["binary_path"] == "leg-test"

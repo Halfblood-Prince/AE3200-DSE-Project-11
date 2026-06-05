@@ -22,7 +22,7 @@ class LegOptimizerWindow:
 
         self.settings = {
             "mass": tk.StringVar(value="4.5"),                # kg
-            "length": tk.StringVar(value="50.0"),             # mm
+            "height": tk.StringVar(value="50.0"),             # mm
             "safety_factor": tk.StringVar(
                 value=f"{self.material.safety_factor:g}"
             ),
@@ -86,7 +86,7 @@ class LegOptimizerWindow:
 
         setting_rows = [
             ("Vehicle mass", "mass", "kg"),
-            ("Leg length", "length", "mm"),
+            ("Vertical height", "height", "mm"),
             ("Safety factor", "safety_factor", ""),
             ("Effective length K", "effective_length_factor", ""),
             ("Tip deflection limit", "max_tip_deflection", "mm"),
@@ -119,6 +119,7 @@ class LegOptimizerWindow:
         )
 
         output_rows = [
+            ("leg_length", "Calculated leg length"),
             ("leg_mass", "Leg mass"),
             ("area", "Cross-section area"),
             ("inertia", "Second moment I"),
@@ -194,16 +195,18 @@ class LegOptimizerWindow:
         radius = radius_mm / 1000
         angle = radians(angle_deg)
         mass_vehicle = self.read_float("mass")
-        length = self.read_float("length") / 1000
+        height = self.read_float("height") / 1000
         safety_factor = self.read_float("safety_factor")
         effective_length_factor = self.read_float("effective_length_factor")
         max_tip_deflection = self.read_float("max_tip_deflection") / 1000
         max_compression = self.read_float("max_compression") / 1000
 
+        angle_cosine = cos(angle)
         if (
             radius <= 0 or
             mass_vehicle <= 0 or
-            length <= 0 or
+            height <= 0 or
+            angle_cosine <= 0 or
             safety_factor <= 0 or
             effective_length_factor <= 0 or
             max_tip_deflection < 0 or
@@ -211,6 +214,7 @@ class LegOptimizerWindow:
         ):
             raise ValueError
 
+        length = height / angle_cosine
         area = pi * radius**2
         inertia = (pi * radius**4) / 4
         bending_force = (
@@ -223,7 +227,7 @@ class LegOptimizerWindow:
         axial_force = (
             mass_vehicle
             * materials.constants.g
-            * cos(angle)
+            * angle_cosine
             * safety_factor
             / self.number_of_legs
         )
@@ -250,6 +254,7 @@ class LegOptimizerWindow:
         )
 
         return {
+            "length": length,
             "area": area,
             "inertia": inertia,
             "bending_force": bending_force,
@@ -279,6 +284,7 @@ class LegOptimizerWindow:
             self.status_var.set("Enter valid positive numeric settings.")
             return
 
+        self.outputs["leg_length"].set(f"{design['length'] * 1000:.3f} mm")
         self.outputs["leg_mass"].set(f"{design['leg_mass'] * 1000:.3f} g")
         self.outputs["area"].set(f"{design['area'] * 1e6:.3f} mm^2")
         self.outputs["inertia"].set(f"{design['inertia'] * 1e12:.3f} mm^4")
