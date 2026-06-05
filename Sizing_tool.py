@@ -14,16 +14,15 @@ N_prop = 8
 flight_time = 7 /60 #hours
 props = load_propeller_dict("propulsion/6.5_E_1000.csv")  #change to correct diameter range
 # MTOW =3.2 * 9.81 # mass * g    #change to initial guess
-MTOM = 3.2
-P_payload = 250   #W
-P_avionics = 50   #W
+MTOM = -100
+P_payload = 150   #W
+P_avionics = 0   #W
 Lipo_spec_energy = 275 #Wh/kg
-M_pay = 1.2
+M_pay = 1.56
 M_avionics = 0
-M_structures = 0.328
+M_structures = 0.5
 
-
-
+iterations = 0
 while True:
     '''Propulsion'''
     MTOW = MTOM * 9.81
@@ -46,20 +45,25 @@ while True:
 
     '''Structures'''
 
-    M_structures = .328
+    # M_structures = .328
 
 
     '''MTOM Update'''
     MTOM_new = m_motor_tot + m_ESC_tot + m_battery + M_avionics + M_pay + M_structures
-  
+    
     
     if np.abs(MTOM_new-MTOM) <= 0.01:
         MTOM = MTOM_new
+        print(f'MTOM_new: {MTOM_new}[kg]')
+        print(f'Power required:{best}[W]')
+        print(best_info["Power_required"]/8)
+        print(best_info["data"].Power)
+        print(f'm_battery: {m_battery}')
+        print(f' iterations: {iterations}')
+        break
+    elif np.abs(MTOM_new-MTOM)/MTOM > 10:
+        print("MTOM diverging, check for errors.")
         break
     else:
         MTOM = MTOM_new
-print(f'MTOM_new: {MTOM_new}[kg]')
-print(best)
-print(best_info["Power_required"]/8)
-print(best_info["data"].Power)
-print(f'm_battery: {m_battery}')
+        iterations += 1
