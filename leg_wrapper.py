@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
 
-import materials
-from binary_bridge import run_binary
+from binary_bridge import load_materials_file, run_binary
 
 
 @dataclass
@@ -10,15 +10,39 @@ class Leg:
     radius: float = 0.005
     angle_deg: float = 30.0
     length: float = 0.1
-    safety_factor: float = 1.5
+    safety_factor: float | None = None
     number_of_legs: int = 2
-    density: float = materials.leg.density
-    youngs_modulus: float = materials.leg.youngs_modulus
-    yield_strength: float = materials.leg.yield_strength
+    materials_file: str | Path = Path(__file__).with_name("materials.py")
+    density: float | None = None
+    youngs_modulus: float | None = None
+    yield_strength: float | None = None
+    gravity: float | None = None
     effective_length_factor: float = 1.0
-    max_tip_deflection: float = 0.005e-3
-    max_compressive_deformation: float = 0.01e-3
+    max_tip_deflection: float | None = None
+    max_compressive_deformation: float | None = None
     binary_path: str | None = None
+
+    def __post_init__(self):
+        material_data = load_materials_file(
+            self.materials_file,
+            required_sections=("constants", "leg"),
+        )
+        if self.density is None:
+            self.density = material_data.leg.density
+        if self.youngs_modulus is None:
+            self.youngs_modulus = material_data.leg.youngs_modulus
+        if self.yield_strength is None:
+            self.yield_strength = material_data.leg.yield_strength
+        if self.safety_factor is None:
+            self.safety_factor = material_data.leg.safety_factor
+        if self.max_tip_deflection is None:
+            self.max_tip_deflection = material_data.leg.max_tip_deflection
+        if self.max_compressive_deformation is None:
+            self.max_compressive_deformation = (
+                material_data.leg.max_compressive_deformation
+            )
+        if self.gravity is None:
+            self.gravity = material_data.constants.g
 
     def _configuration(self):
         return {
@@ -31,6 +55,7 @@ class Leg:
             "density": self.density,
             "youngs-modulus": self.youngs_modulus,
             "yield-strength": self.yield_strength,
+            "gravity": self.gravity,
             "effective-length-factor": self.effective_length_factor,
             "max-tip-deflection": self.max_tip_deflection,
             "max-compressive-deformation":

@@ -23,10 +23,18 @@ class LegOptimizerWindow:
         self.settings = {
             "mass": tk.StringVar(value="4.5"),                # kg
             "length": tk.StringVar(value="50.0"),             # mm
-            "safety_factor": tk.StringVar(value="1.5"),
+            "safety_factor": tk.StringVar(
+                value=f"{self.material.safety_factor:g}"
+            ),
             "effective_length_factor": tk.StringVar(value="1.0"),
-            "max_tip_deflection": tk.StringVar(value="0.01"), # mm
-            "max_compression": tk.StringVar(value="0.01"),    # mm
+            "max_tip_deflection": tk.StringVar(
+                value=f"{self.material.max_tip_deflection * 1000:g}"
+            ),
+            "max_compression": tk.StringVar(
+                value=(
+                    f"{self.material.max_compressive_deformation * 1000:g}"
+                )
+            ),
         }
 
         self.outputs = {}

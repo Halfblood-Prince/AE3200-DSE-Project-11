@@ -12,11 +12,11 @@ class Arm:
         self.R = 0.01           # outer radius [m]
         self.L = 0.25           # beam/arm length [m]
         self.T = 10              # propeller thrust [N]
-        self.SF = 1.5        # Safety factor
+        self.SF = materials.arm.safety_factor
         self.rho = materials.arm.density     # material density [kg/m^3]
         self.resolution = 0.001         # calculation step size [m]
         self.Y = materials.arm.youngs_modulus
-        self.max_tip_deflection = 0.005e-3  # [m]
+        self.max_tip_deflection = materials.arm.max_tip_deflection
         self.area = None
         self.inertia = None
         self.w = None
@@ -137,11 +137,13 @@ class Leg:
         self.angle_deg = 30
         self.angle = radians(self.angle_deg)
         self.R = 0.005
-        self.SF = 1.5
+        self.SF = materials.leg.safety_factor
         self.L = 0.1
         self.effective_length_factor = 1.0
-        self.max_tip_deflection = 0.005e-3  # [m]
-        self.max_compressive_deformation = 0.01e-3
+        self.max_tip_deflection = materials.leg.max_tip_deflection
+        self.max_compressive_deformation = (
+            materials.leg.max_compressive_deformation
+        )
         self.bending_force = 0.0
         self.bending_moment = 0.0
         self.axial_force = 0.0

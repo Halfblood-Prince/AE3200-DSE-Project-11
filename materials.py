@@ -7,6 +7,8 @@ class arm:
     name = "CFRP"
     density = 1600                       # kg/m^3
     youngs_modulus = 140e9               # Pa
+    safety_factor = 1.5
+    max_tip_deflection = 0.005e-3         # m
     poisson_ratio = 0.30
     failure_strain = 0.01
     failure_stress = failure_strain * youngs_modulus
@@ -20,6 +22,9 @@ class leg:
     name = "Aluminium 6061-T6"
     density = 2700                       # kg/m^3
     youngs_modulus = 69e9                # Pa
+    safety_factor = 1.5
+    max_tip_deflection = 0.005e-3         # m
+    max_compressive_deformation = 0.01e-3 # m
     poisson_ratio = 0.33
     yield_strength = 276e6               # Pa
     ultimate_tensile_strength = 310e6    # Pa

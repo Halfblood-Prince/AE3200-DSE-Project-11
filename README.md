@@ -93,7 +93,17 @@ best_leg = Leg(vehicle_mass=4.5).minimise_mass()
 
 The wrappers select the current operating system and CPU architecture
 automatically. A custom executable can be supplied with `binary_path` for
-local builds or testing.
+local builds or testing. Both wrappers also accept a `materials_file` path:
+
+```python
+arm = Arm(materials_file="materials.py")
+leg = Leg(vehicle_mass=4.5, materials_file="materials.py")
+```
+
+The wrapper loads `constants.g` and the relevant `arm` or `leg` class from
+that file, then passes density, stiffness, strength, safety factor, deformation
+limits, and gravity to the C++ binary. Explicit constructor values such as
+`density=1800` or `safety_factor=2.0` override values loaded from the file.
 
 ## Testing
 

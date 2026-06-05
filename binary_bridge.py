@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import platform
 import subprocess
@@ -26,6 +27,27 @@ def native_target():
         raise RuntimeError(
             f"Unsupported native platform: {system}/{machine}"
         ) from error
+
+
+def load_materials_file(materials_file, required_sections=()):
+    path = Path(materials_file).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Materials file not found at {path}.")
+
+    module_name = f"_binary_materials_{abs(hash(path))}"
+    specification = importlib.util.spec_from_file_location(module_name, path)
+    if specification is None or specification.loader is None:
+        raise ImportError(f"Unable to load materials file at {path}.")
+
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+
+    for section in required_sections:
+        if not hasattr(module, section):
+            raise AttributeError(
+                f"Materials file {path} must define '{section}'."
+            )
+    return module
 
 
 def resolve_binary(component, binary_path=None):

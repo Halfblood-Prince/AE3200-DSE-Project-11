@@ -10,8 +10,6 @@
 namespace {
 
 constexpr double PI = 3.141592653589793238462643383279502884;
-constexpr double GRAVITY = 9.81;
-
 class Arguments {
 public:
     Arguments(int argc, char* argv[], int start_index) {
@@ -65,6 +63,7 @@ public:
     double density = 1600.0;
     double youngs_modulus = 140e9;
     double failure_stress = 1.4e9;
+    double gravity = 9.81;
     double max_tip_deflection = 0.005e-3;
 
     ArmResult calculate() const {
@@ -75,7 +74,7 @@ public:
         result.area = PI * (radius * radius - inner_radius * inner_radius);
         result.inertia = (PI / 4.0) *
             (std::pow(radius, 4) - std::pow(inner_radius, 4));
-        result.distributed_load = density * GRAVITY * result.area;
+        result.distributed_load = density * gravity * result.area;
         result.mass = result.area * length * density;
 
         double max_abs_shear = -std::numeric_limits<double>::infinity();
@@ -179,7 +178,7 @@ private:
         if (radius <= 0.0 || thickness <= 0.0 || thickness >= radius ||
             length <= 0.0 || safety_factor <= 0.0 || density <= 0.0 ||
             youngs_modulus <= 0.0 || failure_stress <= 0.0 ||
-            max_tip_deflection < 0.0) {
+            gravity <= 0.0 || max_tip_deflection < 0.0) {
             throw std::invalid_argument("Invalid arm configuration.");
         }
     }
@@ -198,6 +197,7 @@ Arm arm_from_arguments(const Arguments& arguments) {
         arguments.number("youngs-modulus", arm.youngs_modulus);
     arm.failure_stress =
         arguments.number("failure-stress", arm.failure_stress);
+    arm.gravity = arguments.number("gravity", arm.gravity);
     arm.max_tip_deflection =
         arguments.number("max-tip-deflection", arm.max_tip_deflection);
     return arm;

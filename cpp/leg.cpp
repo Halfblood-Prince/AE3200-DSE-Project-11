@@ -11,8 +11,6 @@
 namespace {
 
 constexpr double PI = 3.141592653589793238462643383279502884;
-constexpr double GRAVITY = 9.81;
-
 class Arguments {
 public:
     Arguments(int argc, char* argv[], int start_index) {
@@ -71,6 +69,7 @@ public:
     double density = 2700.0;
     double youngs_modulus = 69e9;
     double yield_strength = 276e6;
+    double gravity = 9.81;
     double angle_deg = 30.0;
     double radius = 0.005;
     double safety_factor = 1.5;
@@ -90,10 +89,10 @@ public:
         result.area = PI * radius * radius;
         result.inertia = PI * std::pow(radius, 4) / 4.0;
         result.bending_force =
-            vehicle_mass * GRAVITY * std::sin(angle) *
+            vehicle_mass * gravity * std::sin(angle) *
             safety_factor / static_cast<double>(number_of_legs);
         result.axial_force =
-            vehicle_mass * GRAVITY * std::cos(angle) *
+            vehicle_mass * gravity * std::cos(angle) *
             safety_factor / static_cast<double>(number_of_legs);
         result.bending_moment = result.bending_force * length;
         result.tip_deflection =
@@ -181,6 +180,7 @@ private:
     void validate() const {
         if (vehicle_mass < 0.0 || density <= 0.0 ||
             youngs_modulus <= 0.0 || yield_strength <= 0.0 ||
+            gravity <= 0.0 ||
             radius <= 0.0 || safety_factor <= 0.0 || length <= 0.0 ||
             effective_length_factor <= 0.0 ||
             max_tip_deflection < 0.0 ||
@@ -206,6 +206,7 @@ Leg leg_from_arguments(const Arguments& arguments) {
         arguments.number("youngs-modulus", leg.youngs_modulus);
     leg.yield_strength =
         arguments.number("yield-strength", leg.yield_strength);
+    leg.gravity = arguments.number("gravity", leg.gravity);
     leg.effective_length_factor = arguments.number(
         "effective-length-factor",
         leg.effective_length_factor

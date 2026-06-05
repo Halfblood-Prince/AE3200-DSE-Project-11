@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pytest
 
+import materials
 from bending import Arm, Leg
 
 
@@ -23,6 +24,10 @@ def test_arm_initialization_runs_analysis_reporting_and_plotting(
     assert len(figure.axes) == 2
     assert arm.z.size == arm.V.size == arm.Mx.size
     assert arm.sigma_z_max > 0
+    assert arm.SF == pytest.approx(materials.arm.safety_factor)
+    assert arm.max_tip_deflection == pytest.approx(
+        materials.arm.max_tip_deflection
+    )
 
     plt.close("all")
 

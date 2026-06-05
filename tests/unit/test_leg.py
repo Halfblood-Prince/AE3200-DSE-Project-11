@@ -2,10 +2,23 @@ from math import cos, pi, sin
 
 import pytest
 
+import materials
 from bending import Leg
 
 
 pytestmark = pytest.mark.unit
+
+
+def test_leg_design_limits_come_from_materials():
+    leg = Leg(4.5)
+
+    assert leg.SF == pytest.approx(materials.leg.safety_factor)
+    assert leg.max_tip_deflection == pytest.approx(
+        materials.leg.max_tip_deflection
+    )
+    assert leg.max_compressive_deformation == pytest.approx(
+        materials.leg.max_compressive_deformation
+    )
 
 
 def test_leg_full_calculation_matches_closed_form_equations():
