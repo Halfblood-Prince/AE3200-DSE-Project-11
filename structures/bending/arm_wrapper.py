@@ -35,7 +35,11 @@ class Arm:
         if self.failure_stress is None:
             self.failure_stress = material_data.arm.failure_stress
         if self.failure_shear_stress is None:
-            self.failure_shear_stress = material_data.arm.failure_shear_stress
+            self.failure_shear_stress = getattr(
+                material_data.arm,
+                "failure_shear_stress",
+                None,
+            )
         if self.safety_factor is None:
             self.safety_factor = material_data.arm.safety_factor
         if self.max_tip_deflection is None:
