@@ -83,6 +83,127 @@ arm = Arm(materials_file="materials.py", safety_factor=2.0)
 leg = Leg(materials_file="materials.py", density=2800)
 ```
 
+## Optional Override Reference
+
+Values passed directly to a wrapper take precedence over values loaded from
+`materials_file`. Parameters left as `None` use the relevant value from the
+material file.
+
+### Arm Constructor Overrides
+
+| Parameter | Unit | Default | Purpose |
+| --- | --- | --- | --- |
+| `thickness` | m | `0.002` | Tube wall thickness used by `calculate()` |
+| `radius` | m | `0.01` | Tube outer radius used by `calculate()` |
+| `length` | m | `0.25` | Arm length |
+| `thrust` | N | `10.0` | Point force applied at the arm tip |
+| `safety_factor` | - | `materials.arm.safety_factor` | Bending-stress safety factor |
+| `materials_file` | path | Local `materials.py` | Alternative material configuration |
+| `density` | kg/m3 | `materials.arm.density` | Arm material density |
+| `youngs_modulus` | Pa | `materials.arm.youngs_modulus` | Arm elastic modulus |
+| `failure_stress` | Pa | `materials.arm.failure_stress` | Allowable material failure stress |
+| `gravity` | m/s2 | `materials.constants.g` | Gravitational acceleration |
+| `max_tip_deflection` | m | `materials.arm.max_tip_deflection` | Tip-deflection constraint |
+| `binary_path` | path | Auto-detected | Explicit compiled arm executable |
+
+Example with every constructor override:
+
+```python
+arm = Arm(
+    thickness=0.0015,
+    radius=0.012,
+    length=0.30,
+    thrust=12.0,
+    safety_factor=2.0,
+    materials_file="materials.py",
+    density=1650,
+    youngs_modulus=135e9,
+    failure_stress=1.2e9,
+    gravity=9.81,
+    max_tip_deflection=0.004e-3,
+    binary_path="bin/arm-windows-amd64.exe",
+)
+```
+
+### Arm Method Overrides
+
+`Arm.calculate()` accepts:
+
+| Parameter | Unit | Default | Purpose |
+| --- | --- | --- | --- |
+| `L` | m | `arm.length` | Length override for this call |
+| `T` | N | `arm.thrust` | Tip-force override for this call |
+
+`Arm.minimise_mass()` accepts:
+
+| Parameter | Unit | Default | Purpose |
+| --- | --- | --- | --- |
+| `radius_min` | m | `0.002` | Minimum searched outer radius |
+| `radius_max` | m | `0.05` | Maximum searched outer radius |
+| `radius_step` | m | `0.0001` | Outer-radius search increment |
+| `thickness_min` | m | `0.0005` | Minimum searched wall thickness |
+| `thickness_step` | m | `0.0001` | Wall-thickness search increment |
+| `L` | m | `arm.length` | Length override for this optimization |
+| `T` | N | `arm.thrust` | Tip-force override for this optimization |
+
+### Leg Constructor Overrides
+
+| Parameter | Unit | Default | Purpose |
+| --- | --- | --- | --- |
+| `vehicle_mass` | kg | `4.5` | Total supported vehicle mass |
+| `radius` | m | `0.005` | Leg radius used by `calculate()` |
+| `angle_deg` | deg | `30.0` | Leg angle used by `calculate()` |
+| `length` | m | `0.1` | Leg length |
+| `safety_factor` | - | `materials.leg.safety_factor` | Load and mass safety factor |
+| `number_of_legs` | - | `2` | Number of legs sharing the vehicle load |
+| `materials_file` | path | Local `materials.py` | Alternative material configuration |
+| `density` | kg/m3 | `materials.leg.density` | Leg material density |
+| `youngs_modulus` | Pa | `materials.leg.youngs_modulus` | Leg elastic modulus |
+| `yield_strength` | Pa | `materials.leg.yield_strength` | Yield-stress constraint |
+| `gravity` | m/s2 | `materials.constants.g` | Gravitational acceleration |
+| `effective_length_factor` | - | `1.0` | Euler-buckling effective-length factor |
+| `max_tip_deflection` | m | `materials.leg.max_tip_deflection` | Lateral tip-deflection constraint |
+| `max_compressive_deformation` | m | `materials.leg.max_compressive_deformation` | Axial-compression constraint |
+| `binary_path` | path | Auto-detected | Explicit compiled leg executable |
+
+Example with every constructor override:
+
+```python
+leg = Leg(
+    vehicle_mass=5.0,
+    radius=0.006,
+    angle_deg=25.0,
+    length=0.12,
+    safety_factor=2.0,
+    number_of_legs=2,
+    materials_file="materials.py",
+    density=2750,
+    youngs_modulus=70e9,
+    yield_strength=280e6,
+    gravity=9.81,
+    effective_length_factor=2.0,
+    max_tip_deflection=0.004e-3,
+    max_compressive_deformation=0.008e-3,
+    binary_path="bin/leg-windows-amd64.exe",
+)
+```
+
+### Leg Method Overrides
+
+`Leg.calculate()` uses the constructor configuration and has no method-level
+override parameters.
+
+`Leg.minimise_mass()` accepts:
+
+| Parameter | Unit | Default | Purpose |
+| --- | --- | --- | --- |
+| `angle_min` | deg | `5.0` | Minimum searched leg angle |
+| `angle_max` | deg | `60.0` | Maximum searched leg angle |
+| `angle_step` | deg | `1.0` | Leg-angle search increment |
+| `radius_min` | m | `0.001` | Minimum searched leg radius |
+| `radius_max` | m | `0.05` | Maximum searched leg radius |
+| `radius_step` | m | `0.0001` | Leg-radius search increment |
+
 ## Compiled Arm Wrapper
 
 Create an arm using the local material configuration:
@@ -285,7 +406,7 @@ The workflows on the `Iterative_tool` branch:
 - Build arm and leg binaries for Linux, macOS, and Windows on AMD64 and ARM64.
 - Replace and commit the generated files under `structures/bending/bin/`.
 - Analyze GitHub Actions, Python, and C++ with CodeQL.
-- Lint Markdown and GitHub Actions workflow files.
+- Run repository hygiene checks.
 
 ## License
 
