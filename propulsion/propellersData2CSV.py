@@ -1,3 +1,69 @@
+"""Propeller data tools for AE3200-DSE-Project-11.
+
+This module converts the raw propeller source files in `airfoilsdat/` into
+`pandas` tables that can be filtered, analyzed, and exported to CSV for the
+propulsion subsystem.
+
+For general project context, repository structure, and branch information,
+refer to the main project README in the repository root: `README.md`.
+
+Overview
+--------
+The workflow in this file is:
+
+1. Read propeller titles from `PER2_TITLEDAT.DAT`
+2. Read RPM limits from `PER2_RPMRANGE.DAT`
+3. Match both datasets by propeller name
+4. Extract diameter, pitch, blade count, and extension from the title
+5. Optionally filter the propeller set
+6. Read static zero-velocity thrust and power points from the individual
+   propeller `.dat` files in `airfoilsdat/PERFILES2/`
+7. Build a final long-form table that can be saved as CSV
+
+Required local data
+-------------------
+The raw `airfoilsdat` files must be present locally on the computer. This code
+expects the repository to contain:
+
+- `airfoilsdat/PER2_TITLEDAT.DAT`
+- `airfoilsdat/PER2_RPMRANGE.DAT`
+- `airfoilsdat/PERFILES2/`
+
+Data may be downloaded from the original source: https://www.apcprop.com/technical-information/file-downloads/?v=796834e7a283
+
+Main functions
+--------------
+- `load_titledat()`: load file names and propeller titles
+- `load_rpm_range()`: load minimum and maximum RPM limits
+- `load_propeller_data()`: match title and RPM metadata
+- `extract_propeller_specs()`: extract diameter, pitch, blade count, and
+  extension
+- `filter_propellers()`: select propellers that satisfy design constraints
+- `load_static_performance()`: read static thrust and power points for one
+  propeller
+- `build_static_propeller_table()`: build a combined table for a filtered set
+  of propellers
+
+How to use
+----------
+Example: generate the base propeller specification table from the raw metadata
+files.
+1) Generate preliminary database with  diameter, pitch, blade count, extension, and RPM limits for each propeller.
+	propellers_data.csv
+default_path = PROJECT_ROOT / "airfoilsdat" / "PER2_RPMRANGE.DAT"
+data = extract_propeller_specs(default_path)
+output_path = Path(__file__).resolve().parent / "propellers_data.csv"
+data.to_csv(output_path, index=False)
+
+2) Generate filtered database with static performance data for propellers with diameter <= 6 inches, pitch <= 4 inches, and extension "E", at RPM values starting from 10000 and increasing in steps of 1000.
+	6.0_4pitch_E_1000.csv
+df = pd.read_csv("propulsion/propellers_data.csv")
+df = build_static_propeller_table(df, max_diameter=6, max_pitch=4, extensions=["E"], strict_static_data=False, rpm_step=1000) 
+print(df)
+df.to_csv("propulsion/6.0_4pitch_E_1000.csv", index=False)
+
+"""
+
 from pathlib import Path
 import re
 
@@ -321,7 +387,6 @@ if __name__ == "__main__":
 	# data.to_csv(output_path, index=False)
 	# print(f"Saved propeller data to {output_path}")
     df = pd.read_csv("propulsion/propellers_data.csv")
-    # print(filter_propellers(df, max_diameter=8.0, extensions=["E"]))
     df = build_static_propeller_table(df, max_diameter=6, max_pitch=4, extensions=["E"], strict_static_data=False, rpm_step=1000) 
     print(df)
     df.to_csv("propulsion/6.0_4pitch_E_1000.csv", index=False)

@@ -47,7 +47,7 @@ while True:
     MTOM_new = m_motor_tot + m_ESC_tot + m_battery + M_avionics + M_pay + M_structures
     
     
-    if np.abs(MTOM_new-MTOM) <= 0.01:
+    if np.abs(MTOM_new-MTOM) <= 0.001:
         MTOM = MTOM_new
         print(f'MTOM_new: {MTOM_new}[kg]')
         print(f'Propeller:{best}')
