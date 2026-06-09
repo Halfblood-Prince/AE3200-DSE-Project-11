@@ -94,9 +94,9 @@ def motor_mass(save_info:dict[str, Any])->tuple[float, float]:
     kv = RPM_max / 22.2
     P_max = save_info["data"].Power[RPM_max]
     I_max = P_max / 22.2
-    L_motor = 4.8910 * (I_max**0.1751) * (P_max**0.2476)
-    D_motor = 41.45 * kv **(-0.1919)*P_max**0.1935
-    m_motor = (0.0109 * kv**0.5122 * P_max**(-0.1902) * np.log10(L_motor) ** 2.5582 * np.log10(D_motor)**12.8502) / 1000
+    # L_motor = 4.8910 * (I_max**0.1751) * (P_max**0.2476)
+    # D_motor = 41.45 * kv **(-0.1919)*P_max**0.1935
+    # m_motor = (0.0109 * kv**0.5122 * P_max**(-0.1902) * np.log10(L_motor) ** 2.5582 * np.log10(D_motor)**12.8502) / 1000
     m_motor =0.1
     return m_motor, I_max
 
