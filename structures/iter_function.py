@@ -42,8 +42,24 @@ def struct_size(MTOM: float, thrust: float, length: float, height: float = 0.3, 
     if not best_leg.get("found"):
         raise RuntimeError("No feasible leg design found in the configured search range.")
 
-    best_arm_mass = best_arm["design"]["mass"]
-    best_leg_mass = best_leg["design"]["mass"]
+    arm_design = best_arm["design"]
+    leg_design = best_leg["design"]
+
+    print("Optimal arm parameters:")
+    print(f"  Radius: {best_arm['radius'] * 1000:.3f} mm")
+    print(f"  Wall thickness: {best_arm['thickness'] * 1000:.3f} mm")
+    print(f"  Length: {length:.3f} m")
+    print(f"  Mass per arm: {arm_design['mass']:.6f} kg")
+
+    print("Optimal leg parameters:")
+    print(f"  Radius: {leg_design['radius'] * 1000:.3f} mm")
+    print(f"  Angle: {leg_design['angle_deg']:.1f} deg")
+    print(f"  Height: {leg_design['height']:.3f} m")
+    print(f"  Length: {leg_design['length']:.3f} m")
+    print(f"  Mass per leg: {leg_design['mass']:.6f} kg")
+
+    best_arm_mass = arm_design["mass"]
+    best_leg_mass = leg_design["mass"]
 
     return arms * best_arm_mass + leg.number_of_legs * best_leg_mass + 0.3
 
