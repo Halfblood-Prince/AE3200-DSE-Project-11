@@ -24,12 +24,17 @@ def _write_static_performance_file(root_path, filename, rpm_rows):
     file_path = performance_dir / filename
 
     lines = []
-    for rpm, power, thrust in rpm_rows:
+    for rpm_row in rpm_rows:
+        if len(rpm_row) == 3:
+            rpm, power, thrust = rpm_row
+            torque = 0.0
+        else:
+            rpm, power, torque, thrust = rpm_row
         lines.extend(
             [
                 f"PROP RPM = {rpm}",
                 "header line to skip",
-                f"0.00 0 0 0 0 0 0 0 {power:.2f} 0 {thrust:.2f}",
+                f"0.00 0 0 0 0 0 0 0 {power:.2f} {torque:.2f} {thrust:.2f}",
             ]
         )
 
@@ -199,8 +204,6 @@ def test_SIZE_PROP_D2C_UT_07(tmp_path):
         ],
         columns=["filename", "Diameter", "Pitch", "RPM min", "RPM max", "Blades", "Extension"],
     )
-    expected["Blades"] = expected["Blades"].astype("int32")
-
     pd.testing.assert_frame_equal(result, expected)
 
 
@@ -257,7 +260,7 @@ def test_SIZE_PROP_D2C_UT_11(tmp_path, monkeypatch):
     _write_static_performance_file(
         tmp_path,
         "PER3_10x4.dat",
-        [(10000, 1.50, 2.50), (12000, 2.00, 3.00), (14000, 2.50, 3.50)],
+        [(10000, 1.50, 0.60, 2.50), (12000, 2.00, 0.70, 3.00), (14000, 2.50, 0.80, 3.50)],
     )
 
     propeller_df = pd.DataFrame([{"filename": "PER3_10x4.dat", "RPM max": 14000}])
@@ -271,11 +274,11 @@ def test_SIZE_PROP_D2C_UT_11(tmp_path, monkeypatch):
 
     expected = pd.DataFrame(
         [
-            {"filename": "PER3_10x4.dat", "RPM": 10000, "Power": 1.50, "Thrust": 2.50},
-            {"filename": "PER3_10x4.dat", "RPM": 12000, "Power": 2.00, "Thrust": 3.00},
-            {"filename": "PER3_10x4.dat", "RPM": 14000, "Power": 2.50, "Thrust": 3.50},
+            {"filename": "PER3_10x4.dat", "RPM": 10000, "Power": 1.50, "Torque": 0.60, "Thrust": 2.50},
+            {"filename": "PER3_10x4.dat", "RPM": 12000, "Power": 2.00, "Torque": 0.70, "Thrust": 3.00},
+            {"filename": "PER3_10x4.dat", "RPM": 14000, "Power": 2.50, "Torque": 0.80, "Thrust": 3.50},
         ],
-        columns=["filename", "RPM", "Power", "Thrust"],
+        columns=["filename", "RPM", "Power", "Torque", "Thrust"],
     )
 
     pd.testing.assert_frame_equal(result, expected)
@@ -287,7 +290,7 @@ def test_SIZE_PROP_D2C_UT_12(tmp_path, monkeypatch):
     _write_static_performance_file(
         tmp_path,
         "PER3_10x4.dat",
-        [(10000, 1.50, 2.50), (14000, 2.50, 3.50)],
+        [(10000, 1.50, 0.60, 2.50), (14000, 2.50, 0.80, 3.50)],
     )
 
     propeller_df = pd.DataFrame([{"filename": "PER3_10x4.dat", "RPM max": 14000}])
@@ -308,12 +311,12 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
     _write_static_performance_file(
         tmp_path,
         "PER3_10x4.dat",
-        [(10000, 1.50, 2.50), (12000, 2.00, 3.00)],
+        [(10000, 1.50, 0.60, 2.50), (12000, 2.00, 0.70, 3.00)],
     )
     _write_static_performance_file(
         tmp_path,
         "PER3_12x6ep-3.dat",
-        [(10000, 2.50, 4.00), (12000, 3.00, 4.50), (14000, 3.50, 5.00)],
+        [(10000, 2.50, 0.90, 4.00), (12000, 3.00, 1.00, 4.50), (14000, 3.50, 1.10, 5.00)],
     )
 
     propeller_df = pd.DataFrame(
@@ -346,6 +349,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
                 "Extension": "E",
                 "RPM": 10000,
                 "Power": 1.50,
+                "Torque": 0.60,
                 "Thrust": 2.50,
             },
             {
@@ -358,6 +362,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
                 "Extension": "E",
                 "RPM": 12000,
                 "Power": 2.00,
+                "Torque": 0.70,
                 "Thrust": 3.00,
             },
             {
@@ -370,6 +375,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
                 "Extension": "EP",
                 "RPM": 10000,
                 "Power": 2.50,
+                "Torque": 0.90,
                 "Thrust": 4.00,
             },
             {
@@ -382,6 +388,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
                 "Extension": "EP",
                 "RPM": 12000,
                 "Power": 3.00,
+                "Torque": 1.00,
                 "Thrust": 4.50,
             },
             {
@@ -394,6 +401,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
                 "Extension": "EP",
                 "RPM": 14000,
                 "Power": 3.50,
+                "Torque": 1.10,
                 "Thrust": 5.00,
             },
         ],
@@ -407,6 +415,7 @@ def test_SIZE_PROP_D2C_UT_13(tmp_path, monkeypatch):
             "Extension",
             "RPM",
             "Power",
+            "Torque",
             "Thrust",
         ],
     )
@@ -440,6 +449,7 @@ def test_SIZE_PROP_D2C_UT_14():
             "Extension",
             "RPM",
             "Power",
+            "Torque",
             "Thrust",
         ]
     )
@@ -458,12 +468,12 @@ def test_SIZE_PROP_D2C_MT_01(tmp_path, monkeypatch):
     _write_static_performance_file(
         tmp_path,
         "PER3_10x4e.dat",
-        [(10000, 1.50, 2.50), (12000, 2.00, 3.00)],
+        [(10000, 1.50, 0.60, 2.50), (12000, 2.00, 0.70, 3.00)],
     )
     _write_static_performance_file(
         tmp_path,
         "PER3_12x6ep-3.dat",
-        [(10000, 2.50, 4.00), (12000, 3.00, 4.50), (14000, 3.50, 5.00)],
+        [(10000, 2.50, 0.90, 4.00), (12000, 3.00, 1.00, 4.50), (14000, 3.50, 1.10, 5.00)],
     )
 
     propeller_df = propellers_data.extract_propeller_specs(rpmrange_path)
@@ -490,6 +500,7 @@ def test_SIZE_PROP_D2C_MT_01(tmp_path, monkeypatch):
                 "Extension": "E",
                 "RPM": 10000,
                 "Power": 1.50,
+                "Torque": 0.60,
                 "Thrust": 2.50,
             },
             {
@@ -502,6 +513,7 @@ def test_SIZE_PROP_D2C_MT_01(tmp_path, monkeypatch):
                 "Extension": "E",
                 "RPM": 12000,
                 "Power": 2.00,
+                "Torque": 0.70,
                 "Thrust": 3.00,
             },
         ],
@@ -515,6 +527,7 @@ def test_SIZE_PROP_D2C_MT_01(tmp_path, monkeypatch):
             "Extension",
             "RPM",
             "Power",
+            "Torque",
             "Thrust",
         ],
     )

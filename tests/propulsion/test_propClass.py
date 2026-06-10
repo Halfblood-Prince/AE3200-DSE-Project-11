@@ -1,6 +1,7 @@
 import pathlib
 import sys
 
+import math
 import pandas as pd
 import pytest
 
@@ -23,6 +24,7 @@ def _build_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "E",
                 "RPM": 12000,
                 "Power": 2.0,
+                "Torque": 0.7,
                 "Thrust": 3.0,
             },
             {
@@ -35,6 +37,7 @@ def _build_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "E",
                 "RPM": 10000,
                 "Power": 1.5,
+                "Torque": 0.6,
                 "Thrust": 2.5,
             },
             {
@@ -47,6 +50,7 @@ def _build_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "E",
                 "RPM": 14000,
                 "Power": 2.5,
+                "Torque": 0.8,
                 "Thrust": 3.5,
             },
         ]
@@ -66,6 +70,7 @@ def _build_multi_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "E",
                 "RPM": 10000,
                 "Power": 1.5,
+                "Torque": 0.6,
                 "Thrust": 2.5,
             },
             {
@@ -78,6 +83,7 @@ def _build_multi_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "E",
                 "RPM": 12000,
                 "Power": 2.0,
+                "Torque": 0.7,
                 "Thrust": 3.0,
             },
             {
@@ -90,6 +96,7 @@ def _build_multi_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "EP",
                 "RPM": 10000,
                 "Power": 2.5,
+                "Torque": 0.9,
                 "Thrust": 4.0,
             },
             {
@@ -102,6 +109,7 @@ def _build_multi_propeller_dataframe() -> pd.DataFrame:
                 "Extension": "EP",
                 "RPM": 14000,
                 "Power": 3.5,
+                "Torque": 1.1,
                 "Thrust": 5.0,
             },
         ]
@@ -162,6 +170,8 @@ def test_SIZE_PROP_CLS_UT_06():
     assert propeller.Blades == 2
     assert propeller.Extension == "E"
     assert propeller.Power[12000] == 2.0
+    assert propeller.Torque[13000] == 0.7
+    assert propeller.TorqueThrustRatio[13000] == pytest.approx(0.7 / 3.0)
     assert propeller.Thrust[13000] == 3.0
 
 
@@ -174,6 +184,17 @@ def test_SIZE_PROP_CLS_UT_07():
 
 
 def test_SIZE_PROP_CLS_UT_08():
+    # Test Propeller computes torque when loading an older CSV without a Torque column
+    propeller_df = _build_propeller_dataframe().drop(columns=["Torque"])
+
+    propeller = Propeller(propeller_df)
+
+    expected_torque = 2.0 / (math.tau * 12000 / 60.0)
+    assert propeller.Torque[12000] == pytest.approx(expected_torque)
+    assert propeller.TorqueThrustRatio[12000] == pytest.approx(expected_torque / 3.0)
+
+
+def test_SIZE_PROP_CLS_UT_09():
     # Test Propeller rejects empty DataFrames even when columns are present
     propeller_df = pd.DataFrame(
         columns=[
@@ -186,6 +207,7 @@ def test_SIZE_PROP_CLS_UT_08():
             "Extension",
             "RPM",
             "Power",
+            "Torque",
             "Thrust",
         ]
     )
@@ -194,7 +216,7 @@ def test_SIZE_PROP_CLS_UT_08():
         Propeller(propeller_df)
 
 
-def test_SIZE_PROP_CLS_UT_09(tmp_path):
+def test_SIZE_PROP_CLS_UT_10(tmp_path):
     # Test Propeller.from_csv loads only the requested propeller rows
     csv_path = _write_propeller_csv(tmp_path, _build_multi_propeller_dataframe())
 
@@ -202,10 +224,12 @@ def test_SIZE_PROP_CLS_UT_09(tmp_path):
 
     assert propeller.name == "PER3_12x6EP-3.dat"
     assert propeller.Blades == 3
+    assert propeller.Torque[14000] == 1.1
+    assert propeller.TorqueThrustRatio[14000] == pytest.approx(1.1 / 5.0)
     assert propeller.Power[14000] == 3.5
 
 
-def test_SIZE_PROP_CLS_UT_10(tmp_path):
+def test_SIZE_PROP_CLS_UT_11(tmp_path):
     # Test Propeller.from_csv raises an error for an unknown propeller name
     csv_path = _write_propeller_csv(tmp_path, _build_multi_propeller_dataframe())
 
@@ -213,7 +237,7 @@ def test_SIZE_PROP_CLS_UT_10(tmp_path):
         Propeller.from_csv(csv_path, "PER3_missing.dat")
 
 
-def test_SIZE_PROP_CLS_UT_11(tmp_path):
+def test_SIZE_PROP_CLS_UT_12(tmp_path):
     # Test load_propeller_dict groups rows into Propeller objects keyed by filename
     csv_path = _write_propeller_csv(tmp_path, _build_multi_propeller_dataframe())
 
@@ -221,6 +245,8 @@ def test_SIZE_PROP_CLS_UT_11(tmp_path):
 
     assert list(propeller_dict) == ["PER3_10x4E.dat", "PER3_12x6EP-3.dat"]
     assert isinstance(propeller_dict["PER3_10x4E.dat"], Propeller)
+    assert propeller_dict["PER3_10x4E.dat"].Torque[12000] == 0.7
+    assert propeller_dict["PER3_10x4E.dat"].TorqueThrustRatio[12000] == pytest.approx(0.7 / 3.0)
     assert propeller_dict["PER3_10x4E.dat"].Thrust[12000] == 3.0
     assert propeller_dict["PER3_12x6EP-3.dat"].Power[12000] == 2.5
 
@@ -235,6 +261,8 @@ def test_SIZE_PROP_CLS_MT_01(tmp_path):
     assert set(propeller_dict) == {"PER3_10x4E.dat", "PER3_12x6EP-3.dat"}
     assert selected_propeller.name == "PER3_10x4E.dat"
     assert selected_propeller.Power[11000] == 1.5
+    assert selected_propeller.Torque[11000] == 0.6
+    assert selected_propeller.TorqueThrustRatio[11000] == pytest.approx(0.6 / 2.5)
     assert propeller_dict["PER3_12x6EP-3.dat"].Thrust[13000] == 5.0
 
 

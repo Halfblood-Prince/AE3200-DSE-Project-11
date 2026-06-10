@@ -16,7 +16,7 @@ The workflow in this file is:
 3. Match both datasets by propeller name
 4. Extract diameter, pitch, blade count, and extension from the title
 5. Optionally filter the propeller set
-6. Read static zero-velocity thrust and power points from the individual
+6. Read static zero-velocity thrust, power, and torque points from the individual
    propeller `.dat` files in `airfoilsdat/PERFILES2/`
 7. Build a final long-form table that can be saved as CSV
 
@@ -39,7 +39,7 @@ Main functions
 - `extract_propeller_specs()`: extract diameter, pitch, blade count, and
   extension
 - `filter_propellers()`: select propellers that satisfy design constraints
-- `load_static_performance()`: read static thrust and power points for one
+- `load_static_performance()`: read static thrust, power, and torque points for one
   propeller
 - `build_static_propeller_table()`: build a combined table for a filtered set
   of propellers
@@ -239,7 +239,7 @@ def load_static_performance(
 	rpm_step: int = 3000,
 	strict: bool = True,
 ) -> pd.DataFrame:
-	"""Load thrust and power at zero velocity from a PERFILES2 propeller data file."""
+	"""Load thrust, power, and torque at zero velocity from a PERFILES2 propeller data file."""
 
 	if propeller_df is None:
 		specs_path = Path(__file__).resolve().parent / "propellers_data.csv"
@@ -295,6 +295,7 @@ def load_static_performance(
 				"filename": filename,
 				"RPM": current_rpm,
 				"Power": float(tokens[8]),
+				"Torque": float(tokens[9]),
 				"Thrust": float(tokens[10]),
 			}
 		)
@@ -305,9 +306,10 @@ def load_static_performance(
 		missing_rpms = ", ".join(str(rpm) for rpm in sorted(target_rpm_set))
 		raise ValueError(f"Could not find zero-velocity data for RPM values: {missing_rpms}")
 
-	return pd.DataFrame(rows, columns=["filename", "RPM", "Power", "Thrust"]).sort_values(
-		"RPM"
-	).reset_index(drop=True)
+	return pd.DataFrame(
+		rows,
+		columns=["filename", "RPM", "Power", "Torque", "Thrust"],
+	).sort_values("RPM").reset_index(drop=True)
 
 
 def build_static_propeller_table(
@@ -341,6 +343,7 @@ def build_static_propeller_table(
 				"Extension",
 				"RPM",
 				"Power",
+				"Torque",
 				"Thrust",
 			]
 		)
@@ -374,6 +377,7 @@ def build_static_propeller_table(
 			"Extension",
 			"RPM",
 			"Power",
+			"Torque",
 			"Thrust",
 		]
 	].sort_values(["Diameter", "Pitch", "RPM"], kind="mergesort").reset_index(drop=True)
@@ -387,6 +391,6 @@ if __name__ == "__main__":
 	# data.to_csv(output_path, index=False)
 	# print(f"Saved propeller data to {output_path}")
     df = pd.read_csv("propulsion/propellers_data.csv")
-    df = build_static_propeller_table(df, max_diameter=6, max_pitch=4, extensions=["E"], strict_static_data=False, rpm_step=1000) 
+    df = build_static_propeller_table(df, max_diameter=4, max_pitch=4, extensions=["E"], strict_static_data=False, rpm_step=1000) 
     print(df)
-    df.to_csv("propulsion/6.0_4pitch_E_1000.csv", index=False)
+    df.to_csv("propulsion/4.0_E_1000.csv", index=False)

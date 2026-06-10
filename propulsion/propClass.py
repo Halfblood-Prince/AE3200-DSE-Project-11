@@ -15,6 +15,9 @@ Expected CSV columns:
 - Power
 - Thrust
 
+Optional CSV columns:
+- Torque
+
 How it works:
 - Each propeller appears in multiple CSV rows, one row per RPM value.
 - `load_propeller_dict(...)` groups the rows by `filename`.
@@ -29,11 +32,15 @@ Main attributes of each `Propeller`:
 - `self.Blades`
 - `self.Extension`
 - `self.Power`
+- `self.Torque`
+- `self.TorqueThrustRatio`
 - `self.Thrust`
 
-`self.Power` and `self.Thrust` are dictionaries:
+`self.Power`, `self.Torque`, `self.TorqueThrustRatio`, and `self.Thrust` are dictionaries:
 - key: integer RPM
-- value: power or thrust at that RPM
+- value: power, torque, torque/thrust ratio, or thrust at that RPM
+
+If the CSV does not include `Torque`, it is computed from power and RPM.
 
 If the requested RPM is not available exactly:
 - the closest valid RPM is used automatically
@@ -48,6 +55,8 @@ Example:
 
     print(prop.Diameter)
     print(prop.Power[10000])
+    print(prop.Torque[10000])
+    print(prop.TorqueThrustRatio[10000])
     print(prop.Thrust[10000])
 
 You can also load a single propeller directly:
@@ -57,6 +66,7 @@ You can also load a single propeller directly:
     print(prop.Power[13000])
 """
 
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -150,6 +160,33 @@ class Propeller:
 			min_rpm=self.RPMmin,
 			max_rpm=self.RPMmax,
 		)
+		if "Torque" in propeller_df.columns:
+			torque_lookup = {
+				int(row["RPM"]): float(row["Torque"])
+				for row in propeller_df[["RPM", "Torque"]].to_dict("records")
+			}
+		else:
+			torque_lookup = {
+				int(row["RPM"]): float(row["Power"]) / (math.tau * float(row["RPM"]) / 60.0)
+				for row in propeller_df[["RPM", "Power"]].to_dict("records")
+			}
+		self.Torque = RPMLookup(
+			torque_lookup,
+			min_rpm=self.RPMmin,
+			max_rpm=self.RPMmax,
+		)
+		self.TorqueThrustRatio = RPMLookup(
+			{
+				int(row["RPM"]): (
+					float("inf")
+					if float(row["Thrust"]) == 0.0
+					else self.Torque[int(row["RPM"])] / float(row["Thrust"])
+				)
+				for row in propeller_df[["RPM", "Thrust"]].to_dict("records")
+			},
+			min_rpm=self.RPMmin,
+			max_rpm=self.RPMmax,
+		)
 		self.Thrust = RPMLookup(
 			{
 				int(row["RPM"]): float(row["Thrust"])
@@ -187,8 +224,12 @@ if __name__ == "__main__":
 
 	print(x45E.name)
 	print(x45E.Power)
+	print(x45E.Torque)
+	print(x45E.TorqueThrustRatio)
 	print(x45E.Thrust)
 	print(x45E.Power[13000])
+	print(x45E.Torque[13000])
+	print(x45E.TorqueThrustRatio[13000])
 	print(x45E.Thrust[13000])
 	print(x45E.Power[13500])
 	print(x45E.Power.closest_rpm(13500))

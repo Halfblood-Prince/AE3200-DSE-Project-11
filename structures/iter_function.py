@@ -18,7 +18,15 @@ import numpy as np
 
 
 
-def struct_size(MTOM: float, thrust: float, length: float, height: float = 0.3, n: int = 8, coaxial: bool = True) -> float:
+def struct_size(
+    MTOM: float,
+    thrust: float,
+    length: float,
+    height: float = 0.3,
+    n: int = 8,
+    coaxial: bool = True,
+    verbose: bool = False,
+) -> float:
 
     if coaxial: arms = n // 2
     else: arms = n
@@ -45,18 +53,19 @@ def struct_size(MTOM: float, thrust: float, length: float, height: float = 0.3, 
     arm_design = best_arm["design"]
     leg_design = best_leg["design"]
 
-    print("Optimal arm parameters:")
-    print(f"  Radius: {best_arm['radius'] * 1000:.3f} mm")
-    print(f"  Wall thickness: {best_arm['thickness'] * 1000:.3f} mm")
-    print(f"  Length: {length:.3f} m")
-    print(f"  Mass per arm: {arm_design['mass']:.6f} kg")
+    if verbose:
+        print("Optimal arm parameters:")
+        print(f"  Radius: {best_arm['radius'] * 1000:.3f} mm")
+        print(f"  Wall thickness: {best_arm['thickness'] * 1000:.3f} mm")
+        print(f"  Length: {length:.3f} m")
+        print(f"  Mass per arm: {arm_design['mass']:.6f} kg")
 
-    print("Optimal leg parameters:")
-    print(f"  Radius: {leg_design['radius'] * 1000:.3f} mm")
-    print(f"  Angle: {leg_design['angle_deg']:.1f} deg")
-    print(f"  Height: {leg_design['height']:.3f} m")
-    print(f"  Length: {leg_design['length']:.3f} m")
-    print(f"  Mass per leg: {leg_design['mass']:.6f} kg")
+        print("Optimal leg parameters:")
+        print(f"  Radius: {leg_design['radius'] * 1000:.3f} mm")
+        print(f"  Angle: {leg_design['angle_deg']:.1f} deg")
+        print(f"  Height: {leg_design['height']:.3f} m")
+        print(f"  Length: {leg_design['length']:.3f} m")
+        print(f"  Mass per leg: {leg_design['mass']:.6f} kg")
 
     best_arm_mass = arm_design["mass"]
     best_leg_mass = leg_design["mass"]
@@ -68,5 +77,5 @@ if __name__ == "__main__":
     thrust = 10
     height = 0.3
     MTOM = 4
-    mass = struct_size(MTOM, thrust, length, height)
+    mass = struct_size(MTOM, thrust, length, height, verbose=True)
     print(f"Estimated structure mass: {mass:.3f} kg")

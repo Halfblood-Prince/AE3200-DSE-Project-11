@@ -463,8 +463,8 @@ def test_SIZE_ST_05(plot=False):
 
     
 if __name__ == "__main__":
-    # test_SIZE_ST_02(MTOM_guess=7, plot=True)
-    # test_SIZE_ST_03(MTOM_guess=7, plot=True)
-    # test_SIZE_ST_04(MTOM_guess=7, plot=True)
-    # test_SIZE_ST_05(plot=True)
-    raise SystemExit(pytest.main([__file__]))
+    test_SIZE_ST_02(MTOM_guess=7, plot=True)
+    test_SIZE_ST_03(MTOM_guess=7, plot=True)
+    test_SIZE_ST_04(MTOM_guess=7, plot=True)
+    test_SIZE_ST_05(plot=True)
+    # raise SystemExit(pytest.main([__file__]))
