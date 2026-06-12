@@ -11,7 +11,7 @@ mass = [1, 3.9, 7]
 numProps = [8, 6, 4]
 payloadPower = [150, 175, 125]
 motorEfficiency = [0.75, 0.9, 0.5]
-path = "C:\\Users\\SID-DRW\\PycharmProjects\\AE3200-DSE-Project-11\\performance\\8.0_E.csv"
+path = "8.0_E.csv"
 name = ["PER3_6x4E.dat", "PER3_5x75E.dat", "PER3_4x4E-3.dat"]
 
 paramsSet = []
