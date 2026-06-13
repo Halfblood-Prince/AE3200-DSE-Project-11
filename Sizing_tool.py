@@ -15,16 +15,63 @@ from structures.iter_function import struct_size
 N_prop = 8
 flight_time = 7 /60 #hours
 # props = load_propeller_dict("propulsion/6.0_4pitch_E_1000.csv")  #change to correct diameter range
-P_payload = 150   #W
+P_payload = 120   #W
 P_avionics = 0   #W
-Lipo_spec_energy = 275 #Wh/kg
-M_pay = 1.4
+Lipo_spec_energy = 230 #Wh/kg
+M_pay = 1.418
 
-MTOM_guess = 4
 
-def run_sizing_tool(MTOM_guess: float, coaxial: bool, N_prop: int, flight_time: float,  P_payload: float, P_avionics: float, Lipo_spec_energy: float, M_pay: float, test: bool = False) -> bool:
+def _build_test_trace_result(
+    mtom_list,
+    p_prop_list,
+    m_battery_list,
+    m_structures_list,
+    residual_list,
+    final_mtom,
+    is_valid,
+    failure_iteration=None,
+    failure_mtom=None,
+):
+    return {
+        "mtom_list": list(mtom_list),
+        "p_prop_list": list(p_prop_list),
+        "m_battery_list": list(m_battery_list),
+        "m_structures_list": list(m_structures_list),
+        "residual_list": list(residual_list),
+        "final_mtom": final_mtom,
+        "is_valid": is_valid,
+        "failure_iteration": failure_iteration,
+        "failure_mtom": failure_mtom,
+    }
+
+
+
+def run_sizing_tool(
+    MTOM_guess: float,
+    coaxial: bool,
+    N_prop: int,
+    flight_time: float,
+    P_payload: float,
+    P_avionics: float,
+    Lipo_spec_energy: float,
+    M_pay: float,
+    test: bool = False,
+    return_trace_metadata: bool = False,
+) -> bool:
     if MTOM_guess <= 0:
         if test:
+            if return_trace_metadata:
+                return _build_test_trace_result(
+                    [MTOM_guess],
+                    [],
+                    [],
+                    [],
+                    [],
+                    np.nan,
+                    False,
+                    failure_iteration=1,
+                    failure_mtom=MTOM_guess,
+                )
             return False
         print("Initial MTOM guess must be positive.")
         return False
@@ -47,6 +94,18 @@ def run_sizing_tool(MTOM_guess: float, coaxial: bool, N_prop: int, flight_time: 
         best, best_info, options = find_prop(MTOW, N_prop, props,coaxial)
         if best_info is None:
             if test:
+                if return_trace_metadata:
+                    return _build_test_trace_result(
+                        mtom_list,
+                        p_prop_list,
+                        m_battery_list,
+                        m_structures_list,
+                        residual_list,
+                        np.nan,
+                        False,
+                        failure_iteration=len(mtom_list) + 1,
+                        failure_mtom=MTOM,
+                    )
                 return False
             print("No valid propeller could be selected for this sizing run.")
             return False
@@ -85,9 +144,20 @@ def run_sizing_tool(MTOM_guess: float, coaxial: bool, N_prop: int, flight_time: 
                 print(f'Propeller:{best}')
                 print(f'Power required: {best_info["Power_required"]/8} [W]')
                 print(f'Propeller data: {best_info["data"].Power} [W]')
+                print(f'Propeller thurst data: {best_info["data"].Thrust} [N]')
                 print(f'm_battery: {m_battery}')
                 print(f' iterations: {iterations}')
             else: 
+                if return_trace_metadata:
+                    return _build_test_trace_result(
+                        mtom_list,
+                        p_prop_list,
+                        m_battery_list,
+                        m_structures_list,
+                        residual_list,
+                        MTOM_new,
+                        True,
+                    )
                 return (
                     mtom_list,
                     p_prop_list,
@@ -99,6 +169,20 @@ def run_sizing_tool(MTOM_guess: float, coaxial: bool, N_prop: int, flight_time: 
             break
         elif residual/MTOM > 10:
             print("MTOM diverging, check for errors.")
+            if test:
+                if return_trace_metadata:
+                    return _build_test_trace_result(
+                        mtom_list,
+                        p_prop_list,
+                        m_battery_list,
+                        m_structures_list,
+                        residual_list,
+                        np.nan,
+                        False,
+                        failure_iteration=len(mtom_list) + 1,
+                        failure_mtom=MTOM_new,
+                    )
+                return False
             break
         else:
             MTOM = MTOM_new
@@ -106,5 +190,9 @@ def run_sizing_tool(MTOM_guess: float, coaxial: bool, N_prop: int, flight_time: 
     return True
 if __name__ == "__main__":
     MTOM_guess = 4
-    coaxial = False
+    coaxial = True
+    print("coaxial")
     run_sizing_tool(MTOM_guess, coaxial=coaxial, N_prop=N_prop, flight_time=flight_time, P_payload=P_payload, P_avionics=P_avionics, Lipo_spec_energy=Lipo_spec_energy, M_pay=M_pay)
+    # coaxial = False
+    # print("non-coaxial")
+    # run_sizing_tool(MTOM_guess, coaxial=coaxial, N_prop=N_prop, flight_time=flight_time, P_payload=P_payload, P_avionics=P_avionics, Lipo_spec_energy=Lipo_spec_energy, M_pay=M_pay)

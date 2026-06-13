@@ -396,20 +396,22 @@ python -m pytest tests/system
 python -m pytest tests/edge
 ```
 
-Check branch coverage for `bending.py`:
+Check branch coverage for `bending.py` only:
 
 ```powershell
 python -m pytest --cov=bending --cov-branch --cov-report=term-missing
 ```
 
-CI enforces at least 90% branch coverage.
+This local command uses the bending submodule's own 90% branch-coverage
+threshold. The repository root CI workflow also runs a separate repository-wide
+coverage check for the full sizing codebase.
 
 ## Continuous Integration
 
 The workflows on the `Iterative_tool` branch:
 
 - Run unit, subsystem, system, and edge-case tests independently.
-- Enforce the `bending.py` coverage threshold.
+- Enforce the repository-wide coverage threshold from the root workflow.
 - Build arm and leg binaries for Linux, macOS, and Windows on AMD64 and ARM64.
 - Replace and commit the generated files under `structures/bending/bin/`.
 - Analyze GitHub Actions, Python, and C++ with CodeQL.

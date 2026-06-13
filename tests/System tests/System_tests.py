@@ -32,7 +32,32 @@ def _get_sizing_inputs():
 def _run_sizing_trace(MTOM_guess=1, invalid_mtom=None, **overrides):
     inputs = _get_sizing_inputs()
     inputs.update(overrides)
-    trace_data = run_sizing_tool(MTOM_guess, test=True, **inputs)
+    trace_data = run_sizing_tool(
+        MTOM_guess,
+        test=True,
+        return_trace_metadata=True,
+        **inputs,
+    )
+    if isinstance(trace_data, dict):
+        trace = {
+            "mtom_list": list(trace_data["mtom_list"]),
+            "p_prop_list": list(trace_data["p_prop_list"]),
+            "m_battery_list": list(trace_data["m_battery_list"]),
+            "m_structures_list": list(trace_data["m_structures_list"]),
+            "residual_list": list(trace_data["residual_list"]),
+            "final_mtom": trace_data["final_mtom"],
+            "is_valid": trace_data["is_valid"],
+            "failure_iteration": trace_data.get("failure_iteration"),
+            "failure_mtom": trace_data.get("failure_mtom"),
+        }
+        if invalid_mtom is not None and not trace["is_valid"]:
+            failure_anchor = trace["failure_mtom"]
+            if failure_anchor is None:
+                failure_anchor = trace["mtom_list"][-1] if trace["mtom_list"] else MTOM_guess
+            trace["mtom_list"].append(float(invalid_mtom))
+            trace["residual_list"].append(abs(float(invalid_mtom) - float(failure_anchor)))
+            trace["final_mtom"] = float(invalid_mtom)
+        return trace
     if trace_data is False:
         mtom_list = [MTOM_guess]
         residual_list = []
@@ -49,6 +74,8 @@ def _run_sizing_trace(MTOM_guess=1, invalid_mtom=None, **overrides):
             "residual_list": residual_list,
             "final_mtom": final_mtom,
             "is_valid": False,
+            "failure_iteration": 1,
+            "failure_mtom": MTOM_guess,
         }
 
     (
@@ -67,6 +94,8 @@ def _run_sizing_trace(MTOM_guess=1, invalid_mtom=None, **overrides):
         "residual_list": residual_list,
         "final_mtom": final_mtom,
         "is_valid": True,
+        "failure_iteration": None,
+        "failure_mtom": None,
     }
 
 
@@ -121,6 +150,36 @@ def _trace_impact_score(trace_a, trace_b, invalid_penalty):
     return float(final_delta + path_delta + step_delta)
 
 
+def _failure_plot_coordinates(trace, fallback_mtom):
+    failure_iteration = trace.get("failure_iteration")
+    if failure_iteration is None:
+        failure_iteration = len(trace["mtom_list"]) if trace["mtom_list"] else 1
+
+    failure_mtom = trace.get("failure_mtom")
+    if failure_mtom is None:
+        failure_mtom = trace["mtom_list"][-1] if trace["mtom_list"] else fallback_mtom
+
+    return int(failure_iteration), float(failure_mtom)
+
+
+def _assert_converged_trace(trace, tolerance=0.001):
+    assert trace["is_valid"], "Sizing trace should converge for this scenario"
+    assert trace["residual_list"], "Converged traces should include a residual history"
+    assert trace["residual_list"][-1] <= tolerance, (
+        f"Final residual should be <= {tolerance}"
+    )
+
+
+def _assert_nominal_trace_bounds(trace, mtom_bounds, max_iterations):
+    _assert_converged_trace(trace)
+    assert mtom_bounds[0] <= trace["final_mtom"] <= mtom_bounds[1], (
+        f"Final MTOM should stay within {mtom_bounds}"
+    )
+    assert len(trace["mtom_list"]) <= max_iterations, (
+        f"Sizing should converge within {max_iterations} iterations"
+    )
+
+
 def test_SIZE_ST_01():
     # Base run test
     inputs = _get_sizing_inputs()
@@ -152,6 +211,7 @@ def test_SIZE_ST_02(MTOM_guess=1, plot=False):
     if plot:
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 8))
         ax1.plot(iterations, mtom_list, marker="o", label="MTOM (kg)")
+        ax1.set_xticks(iterations)
         ax1.set_xlabel("Iteration")
         ax1.set_ylabel("MTOM (kg)")
         ax1.set_title("Convergence: MTOM")
@@ -159,20 +219,24 @@ def test_SIZE_ST_02(MTOM_guess=1, plot=False):
         ax1.grid(True)
 
         ax2.plot(iterations, p_prop_list, marker="s", label="P_prop (W)")
+        ax2.set_xticks(iterations)
         ax2.set_xlabel("Iteration")
         ax2.set_ylabel("P_prop (W)")
         ax2.set_title("Convergence: Propulsive Power")
         ax2.legend()
         ax2.grid(True)
 
-        ax3.plot(delta_iterations, mtom_deltas, marker="o", label="MTOM_i - MTOM_i-1")
+        ax3.plot(delta_iterations, mtom_deltas, marker="o", label="MTOM_i - MTOM_i-1", color="orange")
+        ax3.set_xticks(delta_iterations)
+        
         ax3.set_xlabel("Iteration")
         ax3.set_ylabel("Delta MTOM (kg)")
         ax3.set_title("Successive Difference: MTOM")
         ax3.legend()
         ax3.grid(True)
 
-        ax4.plot(delta_iterations, p_prop_deltas, marker="s", label="P_prop_i - P_prop_i-1")
+        ax4.plot(delta_iterations, p_prop_deltas, marker="s", label="P_prop_i - P_prop_i-1", color="orange")
+        ax4.set_xticks(delta_iterations)
         ax4.set_xlabel("Iteration")
         ax4.set_ylabel("Delta P_prop (W)")
         ax4.set_title("Successive Difference: Propulsive Power")
@@ -218,10 +282,12 @@ def test_SIZE_ST_03(MTOM_guess=1, plot=False):
             battery_deltas,
             marker="o",
             label="m_battery_i - m_battery_i-1",
+            color="orange",
         )
         ax1.set_xlabel("Iteration")
         ax1.set_ylabel("Delta m_battery (kg)")
         ax1.set_title("Successive Difference: Battery Mass")
+        ax1.set_xticks(delta_iterations)
         ax1.legend()
         ax1.grid(True)
 
@@ -230,10 +296,12 @@ def test_SIZE_ST_03(MTOM_guess=1, plot=False):
             structures_deltas,
             marker="s",
             label="M_structures_i - M_structures_i-1",
+            color="orange",
         )
         ax2.set_xlabel("Iteration")
         ax2.set_ylabel("Delta M_structures (kg)")
         ax2.set_title("Successive Difference: Structure Mass")
+        ax2.set_xticks(delta_iterations)
         ax2.legend()
         ax2.grid(True)
 
@@ -243,7 +311,7 @@ def test_SIZE_ST_03(MTOM_guess=1, plot=False):
 def test_SIZE_ST_04(MTOM_guess=1, plot=False):
     # Sensitivity test for converged MTOM with fixed MTOM guess, N_prop, and propeller file
     baseline_trace = _run_sizing_trace(MTOM_guess)
-    assert baseline_trace["is_valid"], "Default sizing run should be valid"
+    _assert_converged_trace(baseline_trace)
     # Invalid runs represent infeasible designs, so they should dominate the
     # sensitivity metric instead of looking like mild perturbations.
     baseline_mtom = baseline_trace["final_mtom"]
@@ -266,10 +334,24 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
             [0.8, 1.8],
         ],
     }
-    param_values = morris_sample(problem, N=4, num_levels=4)
+    param_values = morris_sample(problem, N=4, num_levels=4, seed=0)
     mtom_outputs = []
     coaxial_deltas = []
     coaxial_invalid_cases = 0
+    coaxial_plot_records = []
+    endpoint_traces = {}
+
+    for parameter_name, (lower_bound, upper_bound) in zip(problem["names"], problem["bounds"]):
+        endpoint_traces[parameter_name] = {
+            "low": _run_sizing_trace(
+                MTOM_guess,
+                **{parameter_name: _coerce_parameter_value(parameter_name, lower_bound)},
+            ),
+            "high": _run_sizing_trace(
+                MTOM_guess,
+                **{parameter_name: _coerce_parameter_value(parameter_name, upper_bound)},
+            ),
+        }
 
     for row in param_values:
         sampled_inputs = {
@@ -281,21 +363,24 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
         }
         trace_selected = _run_sizing_trace(
             MTOM_guess,
-            invalid_mtom=invalid_mtom_penalty,
             coaxial=default_inputs["coaxial"],
             **sampled_inputs,
         )
         trace_coaxial_true = _run_sizing_trace(
             MTOM_guess,
-            invalid_mtom=invalid_mtom_penalty,
             coaxial=True,
             **sampled_inputs,
         )
         trace_coaxial_false = _run_sizing_trace(
             MTOM_guess,
-            invalid_mtom=invalid_mtom_penalty,
             coaxial=False,
             **sampled_inputs,
+        )
+        coaxial_plot_records.append(
+            {
+                "coaxial_true": trace_coaxial_true,
+                "coaxial_false": trace_coaxial_false,
+            }
         )
         mtom_outputs.append(
             _trace_impact_score(baseline_trace, trace_selected, invalid_mtom_penalty)
@@ -327,8 +412,37 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
     assert len(mtom_outputs) == len(param_values), "Sensitivity run should evaluate every sample"
     assert np.all(np.isfinite(mtom_outputs)), "Sensitivity outputs should stay finite"
     assert np.all(np.isfinite(coaxial_deltas)), "Coaxial paired-switch deltas should stay finite"
+    assert mu_star.shape == (problem["num_vars"],), "Each sampled variable should get one mu_star value"
+    assert sigma.shape == (problem["num_vars"],), "Each sampled variable should get one sigma value"
     assert np.all(np.isfinite(mu_star)), "Sensitivity indices should stay finite"
+    assert np.all(np.isfinite(sigma)), "Sensitivity spread indices should stay finite"
+    assert np.all(mu_star >= 0), "Morris mu_star values should be non-negative"
+    assert np.all(sigma >= 0), "Morris sigma values should be non-negative"
     assert np.any(mu_star > 0), "At least one variable should influence MTOM"
+
+    for parameter_name, traces in endpoint_traces.items():
+        _assert_converged_trace(
+            traces["low"],
+            tolerance=0.001,
+        )
+        _assert_converged_trace(
+            traces["high"],
+            tolerance=0.001,
+        )
+
+    endpoint_deltas = {
+        parameter_name: (
+            traces["high"]["final_mtom"] - traces["low"]["final_mtom"]
+        )
+        for parameter_name, traces in endpoint_traces.items()
+    }
+    assert endpoint_deltas["flight_time"] > 0, "Longer flight time should increase MTOM"
+    assert endpoint_deltas["P_payload"] > 0, "Higher payload power should increase MTOM"
+    assert endpoint_deltas["P_avionics"] > 0, "Higher avionics power should increase MTOM"
+    assert endpoint_deltas["Lipo_spec_energy"] < 0, (
+        "Higher battery specific energy should reduce MTOM"
+    )
+    assert endpoint_deltas["M_pay"] > 0, "Higher payload mass should increase MTOM"
 
     ranking_entries = list(zip(problem["names"], mu_star, sigma))
     ranking_entries.append(("coaxial", coaxial_mu_star, coaxial_sigma))
@@ -340,13 +454,12 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
     ranked_names = [item[0] for item in ranking]
     ranked_mu_star = [item[1] for item in ranking]
 
-    assert True 
     if plot:
         ranking_fig, ranking_ax = plt.subplots(figsize=(10, 5))
         ranking_ax.bar(ranked_names, ranked_mu_star, color="tab:blue")
         ranking_ax.set_xlabel("Input Variable")
         ranking_ax.set_ylabel("Sensitivity score (|Delta MTOM|)")
-        ranking_ax.set_title("ST_04 Sensitivity of Converged MTOM")
+        # ranking_ax.set_title("ST_04 Sensitivity of Converged MTOM")
         ranking_ax.grid(True, axis="y")
         ranking_fig.tight_layout()
 
@@ -357,10 +470,69 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
 
         for ax, (parameter_name, _, _) in zip(axes, top_three):
             if parameter_name == "coaxial":
-                lower_bound, upper_bound = 0, 1
-            else:
-                parameter_index = problem["names"].index(parameter_name)
-                lower_bound, upper_bound = problem["bounds"][parameter_index]
+                sample_count = len(coaxial_plot_records)
+                invalid_true = sum(
+                    not record["coaxial_true"]["is_valid"] for record in coaxial_plot_records
+                )
+                invalid_false = sum(
+                    not record["coaxial_false"]["is_valid"] for record in coaxial_plot_records
+                )
+                max_iterations = 1
+                coaxial_styles = [
+                    ("Coaxial on", "tab:blue", "coaxial_true"),
+                    ("Coaxial off", "tab:orange", "coaxial_false"),
+                ]
+
+                for line_label, color, trace_key in coaxial_styles:
+                    invalid_label = f"{line_label} invalid"
+                    current_line_label = line_label
+                    for record in coaxial_plot_records:
+                        trace = record[trace_key]
+                        mtom_trace = trace["mtom_list"]
+                        iterations = list(range(1, len(mtom_trace) + 1))
+                        if mtom_trace:
+                            max_iterations = max(max_iterations, len(mtom_trace))
+                            ax.plot(
+                                iterations,
+                                mtom_trace,
+                                color=color,
+                                linewidth=1.0,
+                                alpha=0.25,
+                                label=current_line_label,
+                            )
+                            current_line_label = None
+
+                        if not trace["is_valid"]:
+                            failure_iteration, failure_mtom = _failure_plot_coordinates(
+                                trace,
+                                MTOM_guess,
+                            )
+                            max_iterations = max(max_iterations, failure_iteration)
+                            ax.scatter(
+                                [failure_iteration],
+                                [failure_mtom],
+                                marker="x",
+                                s=35,
+                                linewidths=1.2,
+                                color=color,
+                                alpha=0.9,
+                                label=invalid_label,
+                            )
+                            invalid_label = None
+
+                ax.set_xlabel("Iteration")
+                ax.set_ylabel("MTOM (kg)")
+                ax.set_xticks(range(1, max_iterations + 1))
+                ax.set_title(
+                    "coaxial\n"
+                    f"invalid: on={invalid_true}/{sample_count}, off={invalid_false}/{sample_count}"
+                )
+                ax.grid(True)
+                ax.legend()
+                continue
+
+            parameter_index = problem["names"].index(parameter_name)
+            lower_bound, upper_bound = problem["bounds"][parameter_index]
 
             selected_value = default_inputs[parameter_name]
             scenario_traces = [("Standard inputs", baseline_trace, "black", "--")]
@@ -374,7 +546,6 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
                         f"{label_prefix} = {_format_parameter_value(parameter_name, raw_value)}",
                         _run_sizing_trace(
                             MTOM_guess,
-                            invalid_mtom=invalid_mtom_penalty,
                             **{parameter_name: _coerce_parameter_value(parameter_name, raw_value)},
                         ),
                         color,
@@ -411,7 +582,7 @@ def test_SIZE_ST_04(MTOM_guess=1, plot=False):
         plt.show()
 
 def test_SIZE_ST_05(plot=False):
-    # Initial guess robustness 
+    # Initial guess robustness / basin-of-convergence check
     initial_guesses = list(range(-5, 15))
     traces = [_run_sizing_trace(guess) for guess in initial_guesses]
     valid_pairs = [
@@ -419,33 +590,64 @@ def test_SIZE_ST_05(plot=False):
         for guess, trace in zip(initial_guesses, traces)
         if trace["is_valid"]
     ]
-    invalid_guesses = [
-        guess
+    invalid_pairs = [
+        (guess, trace)
         for guess, trace in zip(initial_guesses, traces)
         if not trace["is_valid"]
     ]
 
     assert valid_pairs, "At least one initial guess should converge to a valid sizing result"
 
-    valid_guesses = [pair[0] for pair in valid_pairs]
+    non_positive_invalid_guesses = [
+        guess for guess, _trace in invalid_pairs if guess <= 0
+    ]
+    positive_valid_guesses = [pair[0] for pair in valid_pairs if pair[0] > 0]
+    positive_invalid_guesses = [
+        guess for guess, _trace in invalid_pairs if guess > 0
+    ]
     valid_results = np.asarray([pair[1] for pair in valid_pairs], dtype=float)
-    distinct_results = np.unique(np.round(valid_results, decimals=6))
+    positive_valid_results = np.asarray(
+        [pair[1] for pair in valid_pairs if pair[0] > 0],
+        dtype=float,
+    )
 
+    assert non_positive_invalid_guesses == [guess for guess in initial_guesses if guess <= 0], (
+        "Non-positive guesses should be rejected explicitly"
+    )
+    assert positive_valid_guesses, "At least one positive initial guess should converge"
     assert np.all(np.isfinite(valid_results)), "Valid initial guesses should produce finite MTOM results"
     assert np.all(valid_results > 0), "Valid initial guesses should produce positive MTOM results"
-    assert len(distinct_results) <= 3, "Initial guess sweep should not create too many distinct convergence basins"
+    assert np.allclose(
+        positive_valid_results,
+        positive_valid_results[0],
+        atol=0.001,
+        rtol=0.0,
+    ), "All feasible positive guesses should converge to the same MTOM fixed point"
+
+    for guess, trace in zip(initial_guesses, traces):
+        if trace["is_valid"]:
+            _assert_converged_trace(trace, tolerance=0.001)
+
+    if positive_invalid_guesses:
+        assert min(positive_invalid_guesses) > max(positive_valid_guesses), (
+            "Positive initial-guess failures should only appear beyond the feasible MTOM range"
+        )
 
     if plot:
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(valid_guesses, valid_results, marker="o", color="tab:blue", label="Converged MTOM")
+        ax.plot(
+            positive_valid_guesses,
+            positive_valid_results,
+            marker="o",
+            color="tab:blue",
+            label="Converged MTOM",
+        )
 
-        if invalid_guesses:
-            invalid_level = (
-                float(np.min(valid_results)) - max(0.1, 0.1 * (float(np.max(valid_results)) - float(np.min(valid_results)) + 1.0))
-            )
+        if invalid_pairs:
+            invalid_guesses = [guess for guess, _trace in invalid_pairs]
             ax.scatter(
                 invalid_guesses,
-                [invalid_level] * len(invalid_guesses),
+                [0.0] * len(invalid_guesses),
                 marker="x",
                 s=80,
                 color="tab:red",
@@ -454,17 +656,62 @@ def test_SIZE_ST_05(plot=False):
 
         ax.set_xlabel("Initial MTOM guess (kg)")
         ax.set_ylabel("Resulting MTOM (kg)")
-        ax.set_title("ST_05 Robustness test")
+        # ax.set_title("ST_05 Robustness test")
         ax.grid(True)
         ax.legend()
         plt.tight_layout()
         plt.show()
 
 
+def test_SIZE_ST_06():
+    # Nominal coaxial system regression check
+    trace = _run_sizing_trace(1)
+
+    _assert_nominal_trace_bounds(
+        trace,
+        mtom_bounds=(3.6, 4.0),
+        max_iterations=8,
+    )
+
+
+def test_SIZE_ST_07():
+    # Nominal non-coaxial configuration should also converge to a plausible MTOM
+    trace = _run_sizing_trace(1, coaxial=False)
+
+    _assert_nominal_trace_bounds(
+        trace,
+        mtom_bounds=(3.6, 4.1),
+        max_iterations=8,
+    )
+
+
+def test_SIZE_ST_08():
+    # Deliberately infeasible mission should fail cleanly with failure metadata
+    trace = _run_sizing_trace(
+        1,
+        coaxial=True,
+        N_prop=8,
+        flight_time=0.40,
+        P_payload=400,
+        P_avionics=80,
+        Lipo_spec_energy=150,
+        M_pay=2.5,
+    )
+
+    assert not trace["is_valid"], "Extreme sizing case should be flagged as invalid"
+    assert np.isnan(trace["final_mtom"]), "Invalid sizing runs should report NaN final MTOM"
+    assert trace["failure_iteration"] is not None, "Failure metadata should record the failing iteration"
+    assert trace["failure_mtom"] is not None, "Failure metadata should record the failing MTOM"
+    assert trace["failure_iteration"] >= 1, "Failure iteration should be positive"
+    assert trace["failure_mtom"] > 0, "Failure MTOM should remain physically positive"
+    assert trace["mtom_list"], "Infeasible positive-guess runs should retain attempted MTOM history"
+    assert trace["residual_list"], "Infeasible positive-guess runs should retain residual history"
+
+
     
 if __name__ == "__main__":
-    test_SIZE_ST_02(MTOM_guess=7, plot=True)
-    test_SIZE_ST_03(MTOM_guess=7, plot=True)
+    # test_SIZE_ST_02(MTOM_guess=7, plot=True)
+    # test_SIZE_ST_03(MTOM_guess=7, plot=True)
     test_SIZE_ST_04(MTOM_guess=7, plot=True)
-    test_SIZE_ST_05(plot=True)
+    # test_SIZE_ST_05(plot=True)
     # raise SystemExit(pytest.main([__file__]))

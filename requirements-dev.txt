@@ -1,0 +1,3 @@
+-r structures/bending/requirements-dev.txt
+pandas>=2.2
+SALib>=1.5
