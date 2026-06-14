@@ -1,11 +1,11 @@
 from pathlib import Path
 import sys
 
-if __package__:
+if __package__:  # pragma: no cover - import bootstrap for package/script execution
     from .bending.arm_wrapper import Arm
     from .bending.leg_wrapper import Leg
     from .shear import shear_arm
-else:
+else:  # pragma: no cover - import bootstrap for package/script execution
     structures_dir = Path(__file__).resolve().parent
     if str(structures_dir) not in sys.path:
         sys.path.insert(0, str(structures_dir))
@@ -26,6 +26,7 @@ def struct_size(
     n: int = 8,
     coaxial: bool = True,
     verbose: bool = False,
+    return_design: bool = False,
 ) -> float:
 
     if coaxial: arms = n // 2
@@ -69,8 +70,17 @@ def struct_size(
 
     best_arm_mass = arm_design["mass"]
     best_leg_mass = leg_design["mass"]
+    total_mass = arms * best_arm_mass + leg.number_of_legs * best_leg_mass + 0.3
 
-    return arms * best_arm_mass + leg.number_of_legs * best_leg_mass + 0.3
+    if return_design:
+        return {
+            "mass": total_mass,
+            "arm_radius": best_arm["radius"],
+            "leg_radius": leg_design["radius"],
+            "leg_inclination_deg": leg_design["angle_deg"],
+        }
+
+    return total_mass
 
 if __name__ == "__main__":
     length = 0.1

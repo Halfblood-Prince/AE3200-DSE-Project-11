@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 
 # Add parent directory to path so we can import EPS, propulsion and structures modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # pragma: no cover - script import bootstrap
 
 from propulsion.propClass import load_propeller_dict
 from propulsion.Iter_function import find_prop, motor_mass, ESC_mass
@@ -79,7 +79,7 @@ def run_sizing_tool(
     if coaxial:
         props = load_propeller_dict("propulsion/6.0_4pitch_E_1000.csv")
     else:
-        props = load_propeller_dict("propulsion/4.0_E_1000.csv")
+        props = load_propeller_dict("propulsion/4.0_E_3000.csv")
         
     iterations = 0
     MTOM = MTOM_guess
@@ -121,8 +121,31 @@ def run_sizing_tool(
 
 
         '''Structures'''
+        if test:
+            structure_result = struct_size(
+                MTOM,
+                T_OEI_prop,
+                length=0.1,
+                height=0.3,
+                n=N_prop,
+                coaxial=coaxial,
+            )
+            structure_details = None
+        else:
+            structure_result = struct_size(
+                MTOM,
+                T_OEI_prop,
+                length=0.1,
+                height=0.3,
+                n=N_prop,
+                coaxial=coaxial,
+                return_design=True,
+            )
+            structure_details = structure_result
 
-        M_structures = struct_size(MTOM, T_OEI_prop, length=0.1, height=0.3, n=N_prop, coaxial=coaxial) #kg
+        M_structures = (
+            structure_result["mass"] if structure_details is not None else structure_result
+        )  # kg
 
 
         '''MTOM Update'''
@@ -147,6 +170,13 @@ def run_sizing_tool(
                 print(f'Propeller thurst data: {best_info["data"].Thrust} [N]')
                 print(f'm_battery: {m_battery}')
                 print(f' iterations: {iterations}')
+                print(f' m_structures: {M_structures}')
+                print(f' Arm radius: {structure_details["arm_radius"] * 1000:.3f} [mm]')
+                print(f' Leg radius: {structure_details["leg_radius"] * 1000:.3f} [mm]')
+                print(
+                    f' Leg inclination: '
+                    f'{structure_details["leg_inclination_deg"]:.1f} [deg]'
+                )
             else: 
                 if return_trace_metadata:
                     return _build_test_trace_result(
@@ -189,10 +219,7 @@ def run_sizing_tool(
             iterations += 1
     return True
 if __name__ == "__main__":
-    MTOM_guess = 4
+    MTOM_guess = 3.22
     coaxial = True
     print("coaxial")
     run_sizing_tool(MTOM_guess, coaxial=coaxial, N_prop=N_prop, flight_time=flight_time, P_payload=P_payload, P_avionics=P_avionics, Lipo_spec_energy=Lipo_spec_energy, M_pay=M_pay)
-    # coaxial = False
-    # print("non-coaxial")
-    # run_sizing_tool(MTOM_guess, coaxial=coaxial, N_prop=N_prop, flight_time=flight_time, P_payload=P_payload, P_avionics=P_avionics, Lipo_spec_energy=Lipo_spec_energy, M_pay=M_pay)

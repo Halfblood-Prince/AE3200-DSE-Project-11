@@ -178,7 +178,7 @@ def test_SIZE_TL_MOD_MT_01(monkeypatch):
         final_mtom,
     ) = result
 
-    assert load_paths == ["propulsion/4.0_E_1000.csv"]
+    assert load_paths == ["propulsion/4.0_E_3000.csv"]
     assert len(mtow_calls) == 2
     assert mtow_calls[0][0] == pytest.approx(2.0 * 9.81)
     assert mtow_calls[1][0] == pytest.approx(3.0 * 9.81)

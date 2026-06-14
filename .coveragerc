@@ -10,6 +10,8 @@ source =
 [report]
 show_missing = True
 skip_empty = True
+exclude_also =
+    if __name__ == .__main__.:
 omit =
     tests/*
     structures/bending/tests/*
