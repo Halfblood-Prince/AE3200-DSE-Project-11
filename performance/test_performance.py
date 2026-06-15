@@ -88,11 +88,13 @@ def test_maxEnduranceVelocity_02():
 def test_maxEnduranceVelocity_03():
     for p in paramsSet:
         v_me1 = maxEnduranceVelocity(p, 1000)
-        v_me2 = maxEnduranceVelocity(p, 1000+1)
-        v_me3 = maxEnduranceVelocity(p, 1000+10)
+        v_me2 = maxEnduranceVelocity(p, 1000 + 1)
+        v_me3 = maxEnduranceVelocity(p, 1000 + 10)
+        v_me4 = maxEnduranceVelocity(p, 1000 * 2)
 
         assert abs(1 - v_me2 / v_me1) < 0.01
         assert abs(1 - v_me3 / v_me1) < 0.01
+        assert abs(1 - v_me4 / v_me1) < 0.01
 
 # max range velocity is greater than max endurance velocity (so also, positive)
 def test_maxRangeVelocity_01():
@@ -108,7 +110,7 @@ def test_maxRangeVelocity_02():
         assert 1.01 * v_mr / powerRequired(v_mr, p) >= v_mr * 0.9 / powerRequired(v_mr * 0.9, p)
 
 # test convergence
-def test_maxEnduranceVelocity_03():
+def test_maxRangeVelocity_03():
     for p in paramsSet:
         v_mr1 = maxRangeVelocity(p, 1000)
         v_mr2 = maxRangeVelocity(p, 1000 + 1)
@@ -129,7 +131,7 @@ def test_findMechanicalEfficiency_02():
     for p in paramsSet:
         e1 = findMechEfficiency(p.propeller, p.propArea, 10000)
         e2 = findMechEfficiency(p.propeller, p.propArea, 10000 + 11)
-        e3 = findMechEfficiency(p.propeller, p.propArea, 10000 + 20)
+        e3 = findMechEfficiency(p.propeller, p.propArea, 10000 + 100)
         e4 = findMechEfficiency(p.propeller, p.propArea, 10000 * 2)
 
         assert abs(1 - e2 / e1) < 0.01
