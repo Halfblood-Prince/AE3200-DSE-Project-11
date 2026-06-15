@@ -89,7 +89,7 @@ def test_maxEnduranceVelocity_03():
     for p in paramsSet:
         v_me1 = maxEnduranceVelocity(p, 1000)
         v_me2 = maxEnduranceVelocity(p, 1000 + 1)
-        v_me3 = maxEnduranceVelocity(p, 1000 + 10)
+        v_me3 = maxEnduranceVelocity(p, int(1000 * 1.01))
         v_me4 = maxEnduranceVelocity(p, 1000 * 2)
 
         assert abs(1 - v_me2 / v_me1) < 0.01
@@ -114,7 +114,7 @@ def test_maxRangeVelocity_03():
     for p in paramsSet:
         v_mr1 = maxRangeVelocity(p, 1000)
         v_mr2 = maxRangeVelocity(p, 1000 + 1)
-        v_mr3 = maxRangeVelocity(p, 1000 + 10)
+        v_mr3 = maxRangeVelocity(p, int(1000 * 1.01))
         v_mr4 = maxRangeVelocity(p, 1000 * 2)
 
         assert abs(1 - v_mr2 / v_mr1) < 0.01
@@ -130,8 +130,8 @@ def test_findMechanicalEfficiency_01():
 def test_findMechanicalEfficiency_02():
     for p in paramsSet:
         e1 = findMechEfficiency(p.propeller, p.propArea, 10000)
-        e2 = findMechEfficiency(p.propeller, p.propArea, 10000 + 11)
-        e3 = findMechEfficiency(p.propeller, p.propArea, 10000 + 100)
+        e2 = findMechEfficiency(p.propeller, p.propArea, 10000 + 1)
+        e3 = findMechEfficiency(p.propeller, p.propArea, int(10000 * 1.01))
         e4 = findMechEfficiency(p.propeller, p.propArea, 10000 * 2)
 
         assert abs(1 - e2 / e1) < 0.01
