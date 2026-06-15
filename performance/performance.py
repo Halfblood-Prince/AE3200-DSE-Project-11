@@ -109,7 +109,6 @@ def performanceAnalysis(parameters:parameters):
     thrusts = np.linspace(0, np.max(propThrust) * 1.1, 200)
 
     plt.plot(thrusts, np.sqrt(np.pow(thrusts, 3) / (2 * rho * p.propArea)) / p.mechEfficiency, label='prediction')
-    #plt.plot(propThrust, propPower, c='orange')
     plt.scatter(propThrust, propPower, c='orange', label='data')
     plt.legend()
     plt.xlabel("Thrust (N)")
@@ -145,58 +144,4 @@ def performanceAnalysis(parameters:parameters):
     plt.show()
 
 
-# print("propeller radius:", (prop.Diameter*2.54/2/100)**2*np.pi, "vs", params.propArea)
-# plt.plot(list(prop.Thrust.values()), list(prop.Power.values()))
-#
-# print("efficiency:", params.mechEfficiency)
-#
-# thrusts = np.linspace(0, 10, 100)
-#
-# plt.plot(thrusts, np.sqrt(np.pow(thrusts, 3)/(2 * rho * params.propArea))/params.mechEfficiency)
-# plt.scatter(list(prop.Thrust.values()), list(prop.Power.values()))
-# plt.xlabel("Thrust (N)")
-# plt.ylabel("Power (W)")
-# plt.show()
-#
-# velocities = np.linspace(0, 8, 100)
-# powers = powerRequired(velocities, params)
-#
-# V_me = maxEnduranceVelocity(params)
-# print("max endurance velocity:", V_me)
-#
-# plt.plot(velocities, powers)
-# plt.scatter(V_me, powerRequired(V_me, params))
-# plt.xlabel("Velocity (m/s)")
-# plt.ylabel("Power (W)")
-# plt.show()
-#
-# V_mr = maxRangeVelocity(params)
-# print("max range velocity:", V_mr)
-# print("hover power:", powerRequired(0, params))
-#
-# plt.plot(velocities, velocities/powers*3600)
-# plt.scatter(V_mr, V_mr/powerRequired(V_mr, params)*3600)
-#
-# plt.xlabel("Velocity (m/s)")
-# plt.ylabel("Specific range (m/Wh)")
-# plt.show()
-#
-# Energy = 244.2 * 3600
-#
-# plt.plot(velocities, Energy/powers / 60)
-# plt.xlabel("Velocity (m/s)")
-# plt.ylabel("Endurance (min)")
-# print("hover time with payload:", Energy/powerRequired(0, params) /60, "minutes")
-# print("max endurance with payload:", Energy/powerRequired(V_me, params) /60, "minutes")
-# print("max endurance without payload:", Energy/( powerRequired(V_me, params) - params.payloadPower ) /60, "minutes")
-#
-# plt.show()
-#
-# plt.plot(velocities, Energy/powers * velocities)
-# plt.xlabel("Velocity (m/s)")
-# plt.ylabel("Range (m)")
-#
-# print("max range with payload:", Energy * V_mr / powerRequired(V_mr, params))
-# print("max range without payload:", Energy * V_mr / ( powerRequired(V_mr, params) - params.payloadPower ))
-#
-# plt.show()
+
